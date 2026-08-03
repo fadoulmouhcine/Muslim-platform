@@ -1,249 +1,570 @@
 <!DOCTYPE html>
-<html lang="en" id="htmlTag">
+<html lang="en" id="htmlTag" dir="ltr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Muslim Platform</title>
+    <title>Privacy Policy - Muslim Platform | سياسة الخصوصية</title>
+    <meta name="description"
+        content="Official Privacy Policy and Data Transparency for Muslim Platform Application by Mouhcine Fadoul.">
+
+    <!-- Google Fonts: Inter for English & Cairo for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
     <style>
         :root {
-            --primary-color: #1b5e20;
-            --secondary-color: #2e7d32;
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --text-color: #2c3e50;
+            --primary-emerald: #0F382C;
+            --emerald-light: #1E5143;
+            --gold-accent: #C5A059;
+            --gold-bright: #D4AF37;
+            --bg-neutral: #F4F7F5;
+            --card-bg: #FFFFFF;
+            --text-dark: #1C2826;
+            --text-muted: #5A6E67;
+            --border-light: #E2E8E5;
+            --badge-bg: #E8F2EE;
+            --radius-main: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-neutral);
+            color: var(--text-dark);
             line-height: 1.7;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
+            padding: 0 0 40px 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        [dir="rtl"] body,
+        [dir="rtl"] .lang-btn,
+        [dir="rtl"] h1,
+        [dir="rtl"] h2,
+        [dir="rtl"] h3 {
+            font-family: 'Cairo', system-ui, sans-serif;
+        }
+
+        .top-banner {
+            background: linear-gradient(135deg, var(--primary-emerald) 0%, var(--emerald-light) 100%);
+            color: white;
+            padding: 40px 20px 60px 20px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(15, 56, 44, 0.15);
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gold-accent);
+            border: 1px solid rgba(197, 160, 89, 0.3);
+            margin-bottom: 16px;
+        }
+
+        .top-banner h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .top-banner p {
+            color: #C8D8D3;
+            font-size: 0.95rem;
         }
 
         .container {
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 860px;
+            margin: -30px auto 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 10;
         }
 
-        .header-bar {
+        .nav-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
             background: var(--card-bg);
-            padding: 12px 20px;
+            padding: 12px 24px;
+            border-radius: var(--radius-main);
+            box-shadow: 0 10px 30px rgba(15, 56, 44, 0.08);
+            border: 1px solid var(--border-light);
+            margin-bottom: 24px;
+        }
+
+        .app-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .app-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-emerald);
+            color: var(--gold-accent);
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .app-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--primary-emerald);
         }
 
         .lang-btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
+            background: var(--badge-bg);
+            color: var(--primary-emerald);
+            border: 1px solid rgba(15, 56, 44, 0.15);
+            padding: 8px 18px;
+            border-radius: 30px;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 0.95rem;
-            transition: background 0.2s ease;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .lang-btn:hover {
-            background-color: var(--secondary-color);
+            background: var(--primary-emerald);
+            color: white;
+            border-color: var(--primary-emerald);
+            transform: translateY(-1px);
         }
 
-        .card {
+        .main-card {
             background: var(--card-bg);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border-top: 5px solid var(--primary-color);
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin-top: 0;
-            font-size: 1.8rem;
+            border-radius: var(--radius-main);
+            padding: 36px;
+            box-shadow: 0 10px 30px rgba(15, 56, 44, 0.06);
+            border: 1px solid var(--border-light);
+            margin-bottom: 30px;
         }
 
         h2 {
-            color: var(--secondary-color);
-            font-size: 1.25rem;
-            border-bottom: 2px solid #eef2f5;
+            color: var(--primary-emerald);
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: 32px 0 16px 0;
             padding-bottom: 8px;
-            margin-top: 25px;
+            border-bottom: 2px solid var(--badge-bg);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2:first-of-type {
+            margin-top: 10px;
         }
 
         h3 {
-            font-size: 1.05rem;
-            margin-top: 15px;
+            color: var(--emerald-light);
+            font-size: 1.08rem;
+            font-weight: 600;
+            margin: 20px 0 8px 0;
         }
 
-        .date {
-            color: #7f8c8d;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
+        p {
+            color: var(--text-dark);
+            margin-bottom: 14px;
+            font-size: 0.98rem;
         }
 
         ul {
-            padding-left: 20px;
+            margin: 10px 0 18px 24px;
         }
 
         [dir="rtl"] ul {
-            padding-right: 20px;
-            padding-left: 0;
+            margin: 10px 24px 18px 0;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        li strong {
+            color: var(--text-dark);
+        }
+
+        .perm-box {
+            background: #F8FAF9;
+            border: 1px solid #E1E9E5;
+            border-left: 4px solid var(--gold-accent);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 16px 0;
+        }
+
+        [dir="rtl"] .perm-box {
+            border-left: 1px solid #E1E9E5;
+            border-right: 4px solid var(--gold-accent);
+        }
+
+        .perm-box h4 {
+            color: var(--primary-emerald);
+            font-size: 0.98rem;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .perm-box p {
+            margin-bottom: 0;
+            font-size: 0.92rem;
+            color: var(--text-muted);
+        }
+
+        .highlight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .highlight-item {
+            background: var(--badge-bg);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(15, 56, 44, 0.08);
+        }
+
+        .highlight-item icon {
+            font-size: 1.6rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .highlight-item h5 {
+            color: var(--primary-emerald);
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .highlight-item p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0;
         }
 
         a {
-            color: var(--secondary-color);
-            font-weight: bold;
+            color: var(--emerald-light);
+            font-weight: 600;
             text-decoration: none;
+            border-bottom: 1px dashed var(--gold-accent);
+            transition: color 0.2s ease;
         }
 
         a:hover {
-            text-decoration: underline;
+            color: var(--primary-emerald);
+            border-bottom-style: solid;
+        }
+
+        .contact-card {
+            background: linear-gradient(135deg, #0F382C 0%, #164638 100%);
+            color: white;
+            border-radius: var(--radius-main);
+            padding: 28px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(15, 56, 44, 0.1);
+        }
+
+        .contact-card h3 {
+            color: var(--gold-accent);
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .contact-card p {
+            color: #D3E0DC;
+            margin-bottom: 18px;
+            font-size: 0.92rem;
+        }
+
+        .email-btn {
+            display: inline-block;
+            background: var(--gold-accent);
+            color: var(--primary-emerald);
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .email-btn:hover {
+            background: var(--gold-bright);
+            transform: translateY(-2px);
+            color: var(--primary-emerald);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
         }
 
         .hidden {
-            display: none;
+            display: none !important;
         }
     </style>
 </head>
 
 <body>
 
+    <!-- Header Banner -->
+    <div class="top-banner">
+        <div class="brand-badge">
+            <span>🕌</span> Muslim Platform
+        </div>
+        <h1 id="bannerTitle">Privacy Policy & Security Transparency</h1>
+        <p id="bannerSubtitle">Last Updated: August 4, 2026 • Official Governance Statement</p>
+    </div>
+
+    <!-- Main Container -->
     <div class="container">
 
-        <!-- Header & Language Switcher -->
-        <div class="header-bar">
-            <span style="font-weight: bold; color: var(--primary-color);">Muslim Platform</span>
-            <button class="lang-btn" id="langToggleBtn" onclick="toggleLanguage()">العربية 🇲🇦</button>
+        <!-- Navigation Bar & Language Switcher -->
+        <div class="nav-bar">
+            <div class="app-info">
+                <div class="app-icon">☪</div>
+                <div class="app-title">Muslim Platform</div>
+            </div>
+            <button class="lang-btn" id="langToggleBtn" onclick="toggleLanguage()">
+                <span>🌐</span> <span id="langBtnText">العربية 🇲🇦</span>
+            </button>
         </div>
 
-        <!-- Main Content Container -->
-        <div class="card">
+        <!-- Privacy Content Card -->
+        <div class="main-card">
 
-            <!-- ENGLISH SECTION (DEFAULT) -->
+            <!-- ENGLISH CONTENT (DEFAULT) -->
             <div id="englishContent">
-                <h1>Privacy Policy</h1>
-                <p class="date"><strong>Last Updated:</strong> August 4, 2026</p>
 
-                <p><strong>Muslim Platform</strong> ("we," "our," or "us") is committed to protecting your privacy. This
-                    Privacy Policy explains how your information is collected, used, and disclosed when you use our
-                    mobile application, developed by <strong>Mouhcine Fadoul</strong>.</p>
+                <!-- Feature Badges -->
+                <div class="highlight-grid">
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">🔒</span>
+                        <h5>100% Local Data</h5>
+                        <p>Your data stays on your device without server tracking.</p>
+                    </div>
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">📍</span>
+                        <h5>Zero Sales</h5>
+                        <p>We never sell or monetize your location or usage logs.</p>
+                    </div>
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">🛡️</span>
+                        <h5>Google Verified</h5>
+                        <p>Compliant with Google Play Developer Policies.</p>
+                    </div>
+                </div>
 
-                <h2>1. Information Collection and Use</h2>
+                <h2>1. Overview & Commitment</h2>
+                <p><strong>Muslim Platform</strong> ("we," "our," or "us") is dedicated to providing an authentic,
+                    private, and advertisement-free Islamic experience. This Privacy Policy explains how information is
+                    handled when you download and use our mobile application, developed by <strong>Mouhcine
+                        Fadoul</strong>.</p>
+                <p>We respect your privacy completely. The app operates with an on-device architecture, meaning core
+                    features run locally without harvesting personal identities or user telemetry.</p>
 
-                <h3>A. Precise Location Data (ACCESS_FINE_LOCATION & ACCESS_COARSE_LOCATION)</h3>
-                <p><strong>Purpose:</strong> The Application requires access to your device's geographical location
-                    solely to accurately calculate Islamic prayer times, Qibla direction, and local Hijri date
-                    adjustments based on your current city.</p>
-                <p><strong>Storage:</strong> Location data is processed locally on your device. We do not store, track,
-                    or sell your personal location history on external servers.</p>
+                <h2>2. Device Permissions & Purpose Disclosure</h2>
+                <p>To provide accurate prayer calculations and mosque silence modes, the Application requires specific
+                    Android runtime permissions. Below is an explicit breakdown of how each permission is utilized:</p>
 
-                <h3>B. Do Not Disturb Access (ACCESS_NOTIFICATION_POLICY)</h3>
-                <p><strong>Purpose:</strong> The Application includes a "Smart Auto-Silent Mode" feature that
-                    automatically mutes your device during prayer times (Iqamah windows) to prevent interruptions inside
-                    mosques.</p>
-                <p><strong>Scope:</strong> This permission is strictly used to toggle the device’s Silent ringer mode on
-                    or off during prayer intervals and restore your original sound settings immediately after. No
-                    notification content or personal communications are accessed or stored.</p>
+                <div class="perm-box">
+                    <h4>📍 Precise Location (ACCESS_FINE_LOCATION & ACCESS_COARSE_LOCATION)</h4>
+                    <p><strong>Purpose:</strong> Used exclusively to calculate exact solar coordinates for Islamic
+                        prayer times (Fajr, Dhuhr, Asr, Maghrib, Isha), determine the Qibla compass direction toward
+                        Mecca, and apply automatic local calculation method rules (e.g., Morocco Ministry of Habous vs
+                        Umm Al-Qura).</p>
+                    <p><strong>Data Handling:</strong> Coordinates are computed locally in real-time. Location history
+                        is never stored, tracked, or transmitted to any external server.</p>
+                </div>
 
-                <h3>C. Notification Permissions (POST_NOTIFICATIONS)</h3>
-                <p><strong>Purpose:</strong> Used exclusively to deliver timely Adhan audio alerts, pre-prayer
-                    reminders, and post-prayer status updates.</p>
+                <div class="perm-box">
+                    <h4>🔇 Do Not Disturb / Notification Policy (ACCESS_NOTIFICATION_POLICY)</h4>
+                    <p><strong>Purpose:</strong> Powers the "Smart Auto-Silent Mode" feature, which temporarily sets
+                        your device to Silent ringer mode during congregational prayer times (Iqamah window) to prevent
+                        disruptions in mosques.</p>
+                    <p><strong>Data Handling:</strong> This permission only toggles your phone's ringer state on and off
+                        during active prayer windows. It does NOT read, intercept, or access notification contents,
+                        contacts, or messages.</p>
+                </div>
 
-                <h2>2. Data Retention and Security</h2>
-                <p>We do not collect, transmit, or store any personal user identity data, financial records, or
-                    communication logs. All application preferences are saved locally on your device using encrypted
-                    local storage parameters.</p>
+                <div class="perm-box">
+                    <h4>🔔 Notifications (POST_NOTIFICATIONS & RECEIVE_BOOT_COMPLETED)</h4>
+                    <p><strong>Purpose:</strong> Used to schedule timely Adhan audio alerts, pre-prayer reminders, and
+                        daily Adhkar notifications even after system reboot.</p>
+                </div>
 
-                <h2>3. Third-Party Services</h2>
-                <p>The Application utilizes third-party services for core functionalities and analytics. Links to their
-                    privacy policies:</p>
+                <div class="perm-box">
+                    <h4>⏰ Exact Alarms (SCHEDULE_EXACT_ALARM & USE_EXACT_ALARM)</h4>
+                    <p><strong>Purpose:</strong> Required on Android 12+ to trigger prayer time Adhan notifications at
+                        exact minute precision without battery delay suppression.</p>
+                </div>
+
+                <h2>3. Data Security & Retention</h2>
+                <p>We do not collect, transmit, or retain any personal identity records, financial information, or
+                    contact books. All user preferences (such as selected calculation method, font size, or silent mode
+                    duration) are saved locally on your device using encrypted Android Shared Preferences.</p>
+
+                <h2>4. Third-Party Integration & SDKs</h2>
+                <p>The Application uses standard, trusted Google SDKs to ensure stability, analytics, and notification
+                    delivery. Below are links to their privacy disclosures:</p>
                 <ul>
-                    <li><a href="https://www.google.com/policies/privacy/" target="_blank">Google Play Services</a></li>
-                    <li><a href="https://firebase.google.com/support/privacy" target="_blank">Google Analytics for
-                            Firebase</a></li>
-                    <li><a href="https://firebase.google.com/support/privacy/" target="_blank">Firebase Crashlytics</a>
-                    </li>
+                    <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener">Google Play
+                            Services</a></li>
+                    <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Google
+                            Analytics for Firebase</a></li>
+                    <li><a href="https://firebase.google.com/support/privacy/" target="_blank" rel="noopener">Firebase
+                            Crashlytics</a></li>
                 </ul>
 
-                <h2>4. Children's Privacy</h2>
-                <p>Our Application does not knowingly collect or solicit personal information from children under the
-                    age of 13.</p>
+                <h2>5. Children's Privacy</h2>
+                <p>Muslim Platform does not knowingly collect or solicit personal information from children under the
+                    age of 13. The app is safe for all age groups.</p>
 
-                <h2>5. Changes to This Privacy Policy</h2>
-                <p>We may update our Privacy Policy from time to time. You are advised to review this page periodically
-                    for any changes.</p>
+                <h2>6. Policy Updates</h2>
+                <p>We may update this Privacy Policy periodically. Any revisions will be published on this URL with an
+                    updated effective date.</p>
 
-                <h2>6. Contact Us</h2>
-                <p>If you have any questions or suggestions about our Privacy Policy, contact us at:</p>
-                <p><strong>Email:</strong> fadoulmouhcine@gmail.com</p>
             </div>
 
-            <!-- ARABIC SECTION (HIDDEN BY DEFAULT) -->
+            <!-- ARABIC CONTENT (HIDDEN BY DEFAULT) -->
             <div id="arabicContent" class="hidden">
-                <h1>سياسة الخصوصية</h1>
-                <p class="date"><strong>آخر تحديث:</strong> 4 أغسطس 2026</p>
 
-                <p>يلتزم تطبيق <strong>Muslim Platform</strong> ("نحن" أو "الخاص بنا") بحماية خصوصيتك. تشرح سياسة
-                    الخصوصية هذه كيفية جمع معلوماتك واستخدامها عند استخدام تطبيق الهاتف المحمول الخاص بنا، والذي تم
-                    تطويره بواسطة <strong>Mouhcine Fadoul</strong>.</p>
+                <!-- Feature Badges -->
+                <div class="highlight-grid">
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">🔒</span>
+                        <h5>معالجة محليّة 100%</h5>
+                        <p>بياناتك تظل محفوظة داخل جهازك دون تتبع أو خوادم.</p>
+                    </div>
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">📍</span>
+                        <h5>لا نبيع البيانات</h5>
+                        <p>نحن لا نبيع أو نشارك موقعك أو سجلاتك مع أي طرف.</p>
+                    </div>
+                    <div class="highlight-item">
+                        <span style="font-size: 1.5rem;">🛡️</span>
+                        <h5>معتمد من Google</h5>
+                        <p>متوافق تماماً مع سياسات وحماية متجر Google Play.</p>
+                    </div>
+                </div>
 
-                <h2>1. جمع المعلومات واستخدامها</h2>
+                <h2>1. مقدمة والتزام بالخصوصية</h2>
+                <p>يلتزم تطبيق <strong>Muslim Platform</strong> ("نحن" أو "التطبيق") بتقديم تجربة إسلامية موثوقة وآمنة
+                    وخالية تماماً من الإعلانات. تشرح سياسة الخصوصية هذه كيفية التعامل مع البيانات عند استخدام التطبيق،
+                    والذي تم تطويره بواسطة <strong>Mouhcine Fadoul</strong>.</p>
+                <p>نحن نحترم خصوصيتك بالكامل. يعمل التطبيق ببنية محلية أونلاين وأوفلاين دون جمع الهويات الشخصية أو تتبع
+                    سلوك المستخدم.</p>
 
-                <h3>أ. بيانات الموقع الدقيق (ACCESS_FINE_LOCATION & ACCESS_COARSE_LOCATION)</h3>
-                <p><strong>الهدف:</strong> يتطلب التطبيق الوصول إلى موقع جهازك الجغرافي فقط وحصرياً لحساب أوقات الصلاة
-                    الإسلامية بدقة، وتحديد اتجاه القبلة، وتعديل التاريخ الهجري بناءً على مدينتك الحالية.</p>
-                <p><strong>التخزين:</strong> يتم معالجة بيانات الموقع محلياً على جهازك. نحن لا نقوم بتخزين أو تتبع أو
-                    بيع سجل موقعك الشخصي على أي خوادم خارجية.</p>
+                <h2>2. الصلاحيات المطلوبة والهدف منها</h2>
+                <p>لحساب أوقات الصلاة بدقة وتفعيل تهميش الهاتف في المسجد، يتطلب التطبيق صلاحيات محددة على نظام Android.
+                    فيما يلي توضيح شفاف لاستخدام كل صلاحية:</p>
 
-                <h3>ب. صلاحية وضع عدم الإزعاج (ACCESS_NOTIFICATION_POLICY)</h3>
-                <p><strong>الهدف:</strong> يتضمن التطبيق ميزة "الوضع الصامت الذكي" والتي تقوم تلقائياً بتحويل الهاتف إلى
-                    الوضع الصامت خلال أوقات الصلاة لمنع الإزعاج داخل المساجد.</p>
-                <p><strong>النطاق:</strong> تُستخدم هذه الصلاحية فقط لتفعيل أو تعطيل الوضع الصامت أثناء فترات الصلاة
-                    وإعادة إعدادات الصوت الأصلية فور انتهائها. لا يتم قراءة أو تخزين أو الوصول إلى أي من إشعاراتك أو
-                    رسائلك الشخصية.</p>
+                <div class="perm-box">
+                    <h4>📍 بيانات الموقع الجغرافي (ACCESS_FINE_LOCATION & ACCESS_COARSE_LOCATION)</h4>
+                    <p><strong>الهدف:</strong> تُستخدم فقط وحصرياً لحساب الإحداثيات الشمسية لأوقات الصلاة الخمس (الفجر،
+                        الظهر، العصر، المغرب، العشاء)، وتحديد اتجاه القبلة نحو مكة المكرمة، وتطبيق طريقة الحساب
+                        التلقائية المناسبة لمدينتك (مثل وزارة الأوقاف والشؤون الإسلامية بالمغرب أو تقويم أم القرى).</p>
+                    <p><strong>معالجة البيانات:</strong> يتم حساب الموقع محلياً على الهاتف في الوقت الفعلي، ولا يتم حفظ
+                        أو تتبع أو إرسال سجل موقعك الجغرافي إلى أي خوادم خارجية مطلقاً.</p>
+                </div>
 
-                <h3>ج. صلاحية الإشعارات (POST_NOTIFICATIONS)</h3>
-                <p><strong>الهدف:</strong> تُستخدم حصرياً لإرسال تنبيهات الأذان والتذكير قبل الصلاة وتحديثات حالة
-                    الصلاة.</p>
+                <div class="perm-box">
+                    <h4>🔇 صلاحية عدم الإزعاج (ACCESS_NOTIFICATION_POLICY)</h4>
+                    <p><strong>الهدف:</strong> تُستخدم لتشغيل ميزة "الوضع الصامت الذكي" التي تقوم تلقائياً بتحويل رنين
+                        الهاتف إلى الوضع الصامت خلال أوقات الصلاة (فترة الإقامة) لمنع الإزعاج داخل المساجد.</p>
+                    <p><strong>معالجة البيانات:</strong> تقتصر هذه الصلاحية فقط على تغيير حالة الصوت (صامت/عام) أثناء
+                        وقت الصلاة وإعادته لحالته الأصلية فور انتهائه. لا يتم قراءة أو التجسس أو الوصول إلى أي إشعارات
+                        أو رسائل أو اتصالات شخصية.</p>
+                </div>
 
-                <h2>2. حماية البيانات والأمان</h2>
-                <p>نحن لا نجمع أو ننقل أو نخزن أي بيانات هوية شخصية للمستخدم أو سجلات مالية. جميع تفضيلات التطبيق يتم
-                    حفظها محلياً على جهازك باستخدام التخزين المحلي المشفر.</p>
+                <div class="perm-box">
+                    <h4>🔔 الإشعارات والأذان (POST_NOTIFICATIONS & RECEIVE_BOOT_COMPLETED)</h4>
+                    <p><strong>الهدف:</strong> لإرسال تنبيهات الأذان بصوت المؤذن والتذكيرات قبل الصلاة وأذكار اليوم حتى
+                        بعد إعادة تشغيل الهاتف.</p>
+                </div>
 
-                <h2>3. خدمات الطرف الثالث (Third-Party Services)</h2>
-                <p>قد يستخدم التطبيق خدمات طرف ثالث لتسهيل الوظائف الأساسية ومراقبة الأداء. يمكنك الاطلاع على سياسات
-                    الخصوصية الخاصة بهم:</p>
+                <div class="perm-box">
+                    <h4>⏰ التنبيهات الدقيقة (SCHEDULE_EXACT_ALARM & USE_EXACT_ALARM)</h4>
+                    <p><strong>الهدف:</strong> مطلوبة على نظام Android 12+ لضمان انطلاق صوت الأذان في الدقيقة والثانية
+                        المحددة بالضبط دون تأخير من النظام.</p>
+                </div>
+
+                <h2>3. أمان البيانات والحفظ</h2>
+                <p>نحن لا نجمع أو ننقل أو نخزن أي سجلات شخصية أو بيانات مالية أو جهات اتصال. جميع تفضيلاتك (مثل طريقة
+                    الحساب المختارة، حجم الخط، أو مدة الوضع الصامت) يتم حفظها محلياً على جهازك باستخدام التخزين المحلي
+                    المشفر.</p>
+
+                <h2>4. خدمات الطرف الثالث</h2>
+                <p>يستخدم التطبيق حزم رسمية من Google لضمان استقرار التطبيق وتلقي إشعارات التحديثات. يمكنك الاطلاع على
+                    سياسات الخصوصية الخاصة بهم:</p>
                 <ul>
-                    <li><a href="https://www.google.com/policies/privacy/" target="_blank">Google Play Services</a></li>
-                    <li><a href="https://firebase.google.com/support/privacy" target="_blank">Google Analytics for
-                            Firebase</a></li>
-                    <li><a href="https://firebase.google.com/support/privacy/" target="_blank">Firebase Crashlytics</a>
-                    </li>
+                    <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener">Google Play
+                            Services</a></li>
+                    <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Google
+                            Analytics for Firebase</a></li>
+                    <li><a href="https://firebase.google.com/support/privacy/" target="_blank" rel="noopener">Firebase
+                            Crashlytics</a></li>
                 </ul>
 
-                <h2>4. خصوصية الأطفال</h2>
-                <p>تطبيقنا لا يجمع أو يطلب معطيات شخصية من الأطفال الذين تقل أعمارهم عن 13 عاماً.</p>
+                <h2>5. خصوصية الأطفال</h2>
+                <p>تطبيق Muslim Platform يناسب جميع الفئات العمرية ولا يجمع أي معلومات شخصية من الأطفال.</p>
 
-                <h2>5. التغييرات على سياسة الخصوصية</h2>
-                <p>قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. ننصحك بمراجعة هذه الصفحة بشكل دوري لأي تغييرات.</p>
+                <h2>6. التحديثات والتواصل</h2>
+                <p>قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. وسيتم نشر أي تحديث على هذا الرابط مباشرة.</p>
 
-                <h2>6. اتصل بنا</h2>
-                <p>إذا كانت لديك أي أسئلة أو اقتراحات حول سياسة الخصوصية، لا تتردد في الاتصال بنا عبر البريد الإلكتروني:
-                </p>
-                <p><strong>البريد الإلكتروني:</strong> fadoulmouhcine@gmail.com</p>
             </div>
 
         </div>
+
+        <!-- Contact Developer Card -->
+        <div class="contact-card">
+            <h3 id="contactTitle">Have Questions or Support Requests?</h3>
+            <p id="bannerContactDesc">Feel free to reach out to the developer directly via official email.</p>
+            <a href="mailto:fadoulmouhcine@gmail.com" class="email-btn">✉ fadoulmouhcine@gmail.com</a>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>© 2026 Muslim Platform • Developed by <strong>Mouhcine Fadoul</strong>. All rights reserved.</p>
+        </footer>
 
     </div>
 
+    <!-- Interactive Script -->
     <script>
         let currentLang = 'en';
 
@@ -251,21 +572,42 @@
             const htmlTag = document.getElementById('htmlTag');
             const enContent = document.getElementById('englishContent');
             const arContent = document.getElementById('arabicContent');
-            const btn = document.getElementById('langToggleBtn');
+            const langBtnText = document.getElementById('langBtnText');
+
+            const bannerTitle = document.getElementById('bannerTitle');
+            const bannerSubtitle = document.getElementById('bannerSubtitle');
+            const contactTitle = document.getElementById('contactTitle');
+            const bannerContactDesc = document.getElementById('bannerContactDesc');
 
             if (currentLang === 'en') {
                 enContent.classList.add('hidden');
                 arContent.classList.remove('hidden');
+
                 htmlTag.setAttribute('lang', 'ar');
                 htmlTag.setAttribute('dir', 'rtl');
-                btn.innerText = 'English 🇬🇧';
+
+                langBtnText.innerText = 'English 🇬🇧';
+
+                bannerTitle.innerText = 'سياسة الخصوصية وحماية البيانات';
+                bannerSubtitle.innerText = 'آخر تحديث: 4 أغسطس 2026 • بيان الشفافية الرسمي';
+                contactTitle.innerText = 'هل لديك أي استفسارات أو طلبات دعم؟';
+                bannerContactDesc.innerText = 'لا تتردد في التواصل مباشرة مع المطور عبر البريد الإلكتروني الرسمى.';
+
                 currentLang = 'ar';
             } else {
                 arContent.classList.add('hidden');
                 enContent.classList.remove('hidden');
+
                 htmlTag.setAttribute('lang', 'en');
                 htmlTag.setAttribute('dir', 'ltr');
-                btn.innerText = 'العربية 🇲🇦';
+
+                langBtnText.innerText = 'العربية 🇲🇦';
+
+                bannerTitle.innerText = 'Privacy Policy & Security Transparency';
+                bannerSubtitle.innerText = 'Last Updated: August 4, 2026 • Official Governance Statement';
+                contactTitle.innerText = 'Have Questions or Support Requests?';
+                bannerContactDesc.innerText = 'Feel free to reach out to the developer directly via official email.';
+
                 currentLang = 'en';
             }
         }

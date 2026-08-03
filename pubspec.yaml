@@ -1,0 +1,161 @@
+name: muslim
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
+  # ZIDNA HADI (Fix mochkil d Logha)
+  flutter_localizations:
+    sdk: flutter
+
+  # Packages Dyalna
+  adhan: ^2.0.0+1
+  firebase_core: ^4.13.0
+  firebase_analytics: ^12.4.6
+  geolocator: ^14.0.3
+  
+  # FIX: Tlla3nah l 0.20.2 bach y-twafaq m3a flutter_localizations
+  intl: ^0.20.2
+  
+  google_fonts: ^8.1.0
+  flutter_compass: ^0.8.1
+  
+  # FIX: Habbetnah l 1.3.3 bach y-khdem m3a flutter_lints bla machakil
+  quran: ^1.3.3
+  
+  geocoding: ^3.0.0
+  provider: ^6.1.1
+  shared_preferences: ^2.3.2
+  share_plus: ^13.2.0
+  hijri: ^3.0.0
+  table_calendar: ^3.2.0
+  flutter_svg: ^2.0.17
+
+  workmanager: ^0.9.0  # للعمل في الخلفية
+  http: ^1.2.0         # للاتصال بالسيرفر
+  speech_to_text: ^7.3.0  # لتحويل الصوت لنص
+  string_similarity: ^2.0.0 # لحساب نسبة التطابق
+  avatar_glow: ^3.0.0     # باش نديرو أنيميشن للمايكروفون
+  wakelock_plus: ^1.6.1
+  just_audio: ^0.9.36
+  flutter_local_notifications: ^18.0.0
+  timezone: ^0.9.4
+  flutter_timezone: ^5.1.0
+  connectivity_plus: ^7.2.0
+  audio_session: ^0.1.25
+  path_provider: ^2.1.6
+  firebase_messaging: ^16.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  # FIX: Tlla3nah l version compatible
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # Hna fin kan-3rfo l-files d JSON w Tswar bach l-App tchoufhom
+  assets:
+    - assets/audio/
+    - assets/json/Names_Of_Allah.json
+    - assets/json/doaa_quran.json
+    - assets/json/prophet_doaa.json
+    - assets/json/quran/doaa_khatm.json
+    - assets/json/daily_athar.json
+    - assets/images/
+    - assets/json/quran/
+    - assets/json/sunnah/
+    - assets/json/tafsir/
+    - assets/json/hadith/
+    - assets/json/quran/hafs.json
+    - assets/json/quran/warsh.json
+    - assets/json/quran/qaloun.json
+    - assets/json/quran/sousi.json
+    - assets/json/quran/douri.json
+    - assets/json/quran/shuba.json
+    - assets/json/tafsir/tafsir.json
+    - assets/svg/
+
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/assets-and-images/#resolution-aware
+
+  # For details regarding adding in fonts from package dependencies,
+  # see https://flutter.dev/custom-fonts/#from-packages
+  
+  # ZIDNA FONTS HNA 👇
+  fonts:
+    - family: Hafs
+      fonts:
+        - asset: assets/fonts/hafs.ttf
+
+    - family: warsh
+      fonts:
+        - asset: assets/fonts/warsh.ttf
+
+    - family: qaloun
+      fonts:
+        - asset: assets/fonts/qaloun.ttf
+
+    - family: sousi
+      fonts:
+        - asset: assets/fonts/sousi.ttf
+
+    - family: douri
+      fonts:
+        - asset: assets/fonts/douri.ttf
+    
+    - family: shuba
+      fonts:
+        - asset: assets/fonts/shuba.ttf
+
+    - family: SurahFont
+      fonts:
+        - asset: assets/fonts/besmellah.ttf

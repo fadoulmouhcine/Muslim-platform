@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "question": "هل صليت الفجر في وقته؟",
+    "category": "البداية",
+    "target_answer": true,
+    "emoji": "🌅",
+    "auto_track_key": "fajr_prayer_completed"
+  },
+  {
+    "id": 2,
+    "question": "هل حافظت على أذكار الصباح والمساء؟",
+    "category": "الذكر",
+    "target_answer": true,
+    "emoji": "📿",
+    "auto_track_key": "daily_adhkar_completed"
+  },
+  {
+    "id": 3,
+    "question": "هل صليت باقي الصلوات الخمس في وقتها؟",
+    "category": "الصلاة",
+    "target_answer": true,
+    "emoji": "🕌",
+    "auto_track_key": "all_prayers_completed"
+  },
+  {
+    "id": 4,
+    "question": "هل قرأت وردك اليومي من القرآن الكريم؟",
+    "category": "القرآن",
+    "target_answer": true,
+    "emoji": "📖",
+    "auto_track_key": "daily_quran_read"
+  },
+  {
+    "id": 5,
+    "question": "هل بررت والديك اليوم (ولو باتصال أو دعاء)؟",
+    "category": "البر",
+    "target_answer": true,
+    "emoji": "👴👵",
+    "auto_track_key": "parents_dutifulness"
+  },
+  {
+    "id": 6,
+    "question": "هل أطلقت بصرك في الحرام؟",
+    "category": "العفة",
+    "target_answer": false,
+    "emoji": "👁️",
+    "auto_track_key": null
+  },
+  {
+    "id": 7,
+    "question": "هل اغتبت أحداً أو تكلمت في عرض أحد؟",
+    "category": "اللسان",
+    "target_answer": false,
+    "emoji": "🗣️",
+    "auto_track_key": null
+  },
+  {
+    "id": 8,
+    "question": "هل كذبت في حديثك أو مازحت بكذب؟",
+    "category": "الصدق",
+    "target_answer": false,
+    "emoji": "🤥",
+    "auto_track_key": null
+  },
+  {
+    "id": 9,
+    "question": "هل غضبت بسرعة أو أسأت الأدب؟",
+    "category": "الأخلاق",
+    "target_answer": false,
+    "emoji": "😡",
+    "auto_track_key": null
+  },
+  {
+    "id": 10,
+    "question": "هل ضيعت وقتك فيما لا ينفع (لغو، جدال..)؟",
+    "category": "الوقت",
+    "target_answer": false,
+    "emoji": "⏳",
+    "auto_track_key": null
+  },
+  {
+    "id": 11,
+    "question": "هل تصدقت اليوم (ولو بابتسامة أو كلمة طيبة)؟",
+    "category": "الخير",
+    "target_answer": true,
+    "emoji": "🤝",
+    "auto_track_key": null
+  },
+  {
+    "id": 12,
+    "question": "هل وصلت رحمك (سألت عن قريب أو صديق)؟",
+    "category": "الصلة",
+    "target_answer": true,
+    "emoji": "📞",
+    "auto_track_key": null
+  },
+  {
+    "id": 13,
+    "question": "هل ظلمت أحداً أو أكلت حق أحد؟",
+    "category": "المعاملة",
+    "target_answer": false,
+    "emoji": "🚫",
+    "auto_track_key": null
+  },
+  {
+    "id": 14,
+    "question": "هل صليت على النبي ﷺ اليوم؟",
+    "category": "الروحانيات",
+    "target_answer": true,
+    "emoji": "💚",
+    "auto_track_key": "tasbih_count_reached"
+  },
+  {
+    "id": 15,
+    "question": "هل سامحت من أخطأ في حقك قبل النوم؟",
+    "category": "الختام",
+    "target_answer": true,
+    "emoji": "🤍",
+    "auto_track_key": null
+  }
+]

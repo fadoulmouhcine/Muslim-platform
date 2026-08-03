@@ -1,0 +1,29 @@
+[
+  {
+    "id": "bukhari",
+    "title_ar": "صحيح البخاري",
+    "title_en": "Sahih Al-Bukhari",
+    "author": "الإمام البخاري",
+    "hadith_count": 7563,
+    "color": "0xFF10B981", 
+    "type": "sahih"
+  },
+  {
+    "id": "muslim",
+    "title_ar": "صحيح مسلم",
+    "title_en": "Sahih Muslim",
+    "author": "الإمام مسلم",
+    "hadith_count": 3033,
+    "color": "0xFF10B981",
+    "type": "sahih"
+  },
+  {
+    "id": "nawawi40",
+    "title_ar": "الأربعون النووية",
+    "title_en": "40 Hadith Nawawi",
+    "author": "الإمام النووي",
+    "hadith_count": 42,
+    "color": "0xFFD4AF37",
+    "type": "collection"
+  }
+]

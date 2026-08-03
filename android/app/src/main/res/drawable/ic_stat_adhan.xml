@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Crescent & Star / Minaret Top -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2A2,2 0,0 0,10.27,3.15A2,2 0,0 1,11.5,5A2,2 0,0 1,9.5,7A2,2 0,0 1,7.65,5.73A2,2 0,0 0,7,6A2,2 0,0 0,9,8A2,2 0,0 0,11,6A2,2 0,0 0,10.97,5.08A3,3 0,0 0,12,2Z"/>
+    <!-- Central Mosque Dome and Minaret Structure -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,4C9.5,6 8,8.5 8,11L16,11C16,8.5 14.5,6 12,4ZM4,10L6,10L6,21L4,21ZM18,10L20,10L20,21L18,21ZM7,12L17,12L17,21L7,21ZM10,15C10,13.9 10.9,13 12,13C13.1,13 14,13.9 14,15L14,21L10,21Z"/>
+</vector>

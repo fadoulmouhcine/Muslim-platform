@@ -1,0 +1,171 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../services/app_colors.dart';
+
+class PrivacySettingsTab extends StatefulWidget {
+  const PrivacySettingsTab({super.key});
+
+  @override
+  State<PrivacySettingsTab> createState() => _PrivacySettingsTabState();
+}
+
+class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
+  int _locationMode = 0; // 0: Precise, 1: Approximate
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _buildSettingsCard(
+          title: "صلاحيات الموقع",
+          icon: Icons.location_on_outlined,
+          child: Column(
+            children: [
+              _buildRadioRow(
+                title: "موقع دقيق للقبلة",
+                subtitle: "يستخدم GPS لتحديد اتجاه القبلة بدقة عالية",
+                value: 0,
+                groupValue: _locationMode,
+                onChanged: (val) => setState(() => _locationMode = val as int),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(color: Color(0xFFE1E3E2), height: 1),
+              ),
+              _buildRadioRow(
+                title: "موقع تقريبي للأذان",
+                subtitle: "يستخدم الشبكة لتحديد المدينة وحساب المواقيت",
+                value: 1,
+                groupValue: _locationMode,
+                onChanged: (val) => setState(() => _locationMode = val as int),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.red[700], size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    "منطقة الخطر",
+                    style: GoogleFonts.cairo(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[700],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red[700],
+                    backgroundColor: Colors.red.withValues(alpha: 0.1),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {},
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text("حذف جميع بياناتي المحلية",
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsCard(
+      {required String title, required IconData icon, required Widget child}) {
+    final colors = AppColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: const Color(0xFFC9A96E), size: 24),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: GoogleFonts.cairo(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFC9A96E),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        child,
+        const SizedBox(height: 24),
+        Divider(color: colors.borderColor),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildRadioRow({
+    required String title,
+    required String subtitle,
+    required int value,
+    required int groupValue,
+    required ValueChanged onChanged,
+  }) {
+    final c = AppColors.of(context);
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: c.textSecondary)),
+                  Text(subtitle,
+                      style:
+                          GoogleFonts.cairo(fontSize: 12, color: c.textSubtle)),
+                ],
+              ),
+            ),
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: value == groupValue ? c.goldAccent : c.borderColor,
+                  width: value == groupValue ? 6 : 2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

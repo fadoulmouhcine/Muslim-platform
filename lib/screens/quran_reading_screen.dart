@@ -616,6 +616,49 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
     );
   }
 
+  /// ✅ Requirement #3 ("Ayah Numbers Display"): Renders a small,
+  /// font-independent circled ayah-number badge (e.g. "١") for
+  /// "القرآن البسيط" (Simple Quran mode). This replaces the Uthmanic
+  /// per-ayah ligature ornament (which is stripped by
+  /// `TajweedService.simplifyForPlainMode` since it only renders correctly
+  /// with the KFGQPC Hafs font) with a badge that is guaranteed to render
+  /// correctly and be clearly visible regardless of the chosen clean font
+  /// (Amiri / Cairo / Aref Ruqaa).
+  InlineSpan _buildAyahNumberBadge(
+      int ayahNo, SettingsProvider settings, bool isDark, double baseFontSize) {
+    final numberText = settings.getVerseNumber(ayahNo);
+    final double badgeSize = (baseFontSize * 0.78).clamp(20.0, 34.0);
+    final double numberFontSize = (badgeSize * 0.44).clamp(10.0, 15.0);
+    const goldColor = Color(0xFFC5A059);
+
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Container(
+          width: badgeSize,
+          height: badgeSize,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: goldColor, width: 1.2),
+            color: goldColor.withValues(alpha: isDark ? 0.16 : 0.09),
+          ),
+          child: Text(
+            numberText,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cairo(
+              fontSize: numberFontSize,
+              fontWeight: FontWeight.bold,
+              color: goldColor,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // ✅ Settings Provider
@@ -1029,11 +1072,13 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
         );
         spans.addAll(tajweedSpans);
       } else {
-        // ✅ Simple mode (index 2): strip annotation marks for clean reading.
-        final isSimpleMode = settings.quranFontStyleIndex == 2;
+        // ✅ Simple mode ("القرآن البسيط", index 1): strip annotation marks
+        // for clean reading while keeping standard essential diacritics.
+        final isSimpleMode = settings.quranFontStyleIndex == 1;
         final displayText = isSimpleMode
             ? TajweedService.simplifyForPlainMode(verseText)
             : verseText;
+
         spans.add(
           TextSpan(
             text: "$displayText ",
@@ -1050,6 +1095,15 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
                   context, verse['sura_no'], verse['aya_no'], verseText),
           ),
         );
+
+        // ✅ Requirement #3: "القرآن البسيط" strips the Uthmanic per-ayah
+        // ligature ornament (see TajweedService.simplifyForPlainMode), so we
+        // render an explicit, font-independent circled ayah-number badge
+        // instead — always correctly rendered & clearly visible.
+        if (isSimpleMode) {
+          spans.add(_buildAyahNumberBadge(
+              verse['aya_no'], settings, isDark, settings.fontSize));
+        }
       }
 
       if (QuranMetaData.getPartitionLabel(verse['sura_no'], verse['aya_no']) !=
@@ -1255,9 +1309,13 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
                                           : const Color(0xFF2C2C2C),
                                     )))
                                   : Builder(builder: (context) {
-                                      // ✅ Simple mode: strip annotation marks.
+                                      // ✅ Simple mode ("القرآن البسيط",
+                                      // index 1): strip annotation marks and
+                                      // force justified alignment for a
+                                      // clean, balanced paragraph flow
+                                      // (Requirement #4).
                                       final isSimpleMode =
-                                          settings.quranFontStyleIndex == 2;
+                                          settings.quranFontStyleIndex == 1;
                                       final rawText =
                                           verse['aya_text'] as String;
                                       final displayText = isSimpleMode
@@ -1266,7 +1324,9 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
                                           : rawText;
                                       return Text(
                                         displayText,
-                                        textAlign: TextAlign.center,
+                                        textAlign: isSimpleMode
+                                            ? TextAlign.justify
+                                            : TextAlign.center,
                                         style: TextStyle(
                                             fontFamily:
                                                 settings.currentFontFamily,

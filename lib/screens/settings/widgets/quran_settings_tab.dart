@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import '../../../services/app_colors.dart';
 import '../../../services/quran_service.dart';
 import '../../../services/settings_provider.dart';
+import '../../../services/tajweed_service.dart';
 import '../../../services/vibration_service.dart';
 import '../../../constants/app_strings.dart';
+
 
 
 class QuranSettingsTab extends StatefulWidget {
@@ -178,7 +180,7 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
               child: Divider(color: Color(0xFFE1E3E2), height: 1),
             ),
 
-            // Item B: Font Style Selector
+            // Item B: Font Style Selector (+ Simple-mode font family picker)
             _buildFontStyleSelector(settings, primaryDarkGreen),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -273,6 +275,11 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
                 fontSize: 16,
                 color: primaryDarkGreen)),
         const SizedBox(height: 16),
+        // ✅ Requirement #1: Two core layout modes remain:
+        //   0 = "القرآن العثماني" (Uthmanic — traditional Othmani rendering).
+        //   1 = "القرآن البسيط" (Simplified — strips complex Tajweed/stop
+        //       annotation glyphs while keeping standard essential
+        //       diacritics, rendered in a user-selectable clean typeface).
         Row(
           children: [
             Expanded(
@@ -285,24 +292,61 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
             const SizedBox(width: 10),
             Expanded(
               child: _FontSelectionCard(
-                title: "القرآن النسخ",
+                title: "القرآن البسيط",
                 isSelected: settings.quranFontStyleIndex == 1,
                 onTap: () => settings.setQuranFontStyleIndex(1),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _FontSelectionCard(
-                title: "القرآن بسيط",
-                isSelected: settings.quranFontStyleIndex == 2,
-                onTap: () => settings.setQuranFontStyleIndex(2),
-              ),
-            ),
           ],
-        )
+        ),
+        // ✅ Requirement #2: Font family picker — only shown when "القرآن
+        // البسيط" (Simple mode, index 1) is selected. Lets the user choose
+        // between bundled clean/readable Arabic fonts (Amiri / Cairo /
+        // Aref Ruqaa) used exclusively by Simple mode's rendering pipeline
+        // (`SettingsProvider.currentFontFamily`).
+        if (settings.quranFontStyleIndex == 1) ...[
+          const SizedBox(height: 18),
+          _buildSimpleFontFamilyPicker(settings, primaryDarkGreen),
+        ],
       ],
     );
   }
+
+  Widget _buildSimpleFontFamilyPicker(
+      SettingsProvider settings, Color primaryDarkGreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("خط القرآن البسيط",
+            style: GoogleFonts.cairo(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: primaryDarkGreen)),
+        const SizedBox(height: 4),
+        Text("اختر الخط العربي الواضح المفضل للقراءة",
+            style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[600])),
+        const SizedBox(height: 10),
+        Row(
+          children: SettingsProvider.simpleFontOptions.entries.map((entry) {
+            final isLast =
+                entry.key == SettingsProvider.simpleFontOptions.keys.last;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(left: isLast ? 0 : 8),
+                child: _FontFamilyCard(
+                  label: entry.value,
+                  fontKey: entry.key,
+                  isSelected: settings.simpleFontFamily == entry.key,
+                  onTap: () => settings.setSimpleFontFamily(entry.key),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
 
   Widget _buildFontSizeSlider(BuildContext context, SettingsProvider settings,
       Color primaryDarkGreen, Color mutedGreen) {
@@ -379,32 +423,32 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
                 // Canonical preview text (Basmala with full diacritics).
                 const rawPreview =
                     "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
-                final isSimpleMode = settings.quranFontStyleIndex == 2;
+                // ✅ Only two options remain: 0 = "القرآن العثماني",
+                // 1 = "القرآن البسيط" (uses `TajweedService.simplifyForPlainMode`
+                // — the exact same stripping logic applied in the reading
+                // screen — so the settings preview always matches what the
+                // user will actually see while reading). The preview also
+                // respects the user-selected `simpleFontFamily` so switching
+                // fonts here immediately reflects in the live preview
+                // (Requirement #2).
+                final isSimpleMode = settings.quranFontStyleIndex == 1;
                 final previewText = isSimpleMode
-                    ? rawPreview
-                        .replaceAll(RegExp(
-                            r'[\u06D6-\u06DC\u06DF-\u06E4\u06E5-\u06E8\u06EA-\u06ED\u0615\u0670\u200C-\u200F\u0600-\u0605]'),
-                            '')
+                    ? TajweedService.simplifyForPlainMode(rawPreview)
                     : rawPreview;
-                // Amiri for index 1 (Naskh) and index 2 (Simple).
-                final useAmiri = settings.quranFontStyleIndex == 1 ||
-                    settings.quranFontStyleIndex == 2;
                 return Text(
                   previewText,
-                  textAlign: TextAlign.center,
-                  style: useAmiri
-                      ? GoogleFonts.amiri(
-                          fontSize: settings.fontSize,
-                          color: c.textPrimary,
-                          height: isSimpleMode ? 2.0 : 1.8,
-                        )
-                      : TextStyle(
-                          fontFamily: settings.currentFontFamily,
-                          fontSize: settings.fontSize,
-                          color: c.textPrimary,
-                        ),
+                  textAlign: isSimpleMode
+                      ? TextAlign.justify
+                      : TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: settings.currentFontFamily,
+                    fontSize: settings.fontSize,
+                    color: c.textPrimary,
+                    height: isSimpleMode ? 2.0 : 1.4,
+                  ),
                 );
               }),
+
             ],
           ),
         ),
@@ -453,6 +497,78 @@ class _FontSelectionCard extends StatelessWidget {
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             fontSize: 12,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ✅ Requirement #2: A small selectable card used to pick the clean Arabic
+/// font family applied exclusively to "القرآن البسيط" (Simple mode). Each
+/// card renders its own label using the actual candidate font so the user
+/// can preview the look of each option directly in the picker itself.
+class _FontFamilyCard extends StatelessWidget {
+  final String label;
+  final String fontKey;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FontFamilyCard({
+    required this.label,
+    required this.fontKey,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  TextStyle _fontStyle() {
+    switch (fontKey) {
+      case 'Cairo':
+        return GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14);
+      case 'ArefRuqaa':
+        return GoogleFonts.arefRuqaa(
+            fontWeight: FontWeight.bold, fontSize: 15);
+      default:
+        return GoogleFonts.amiri(fontWeight: FontWeight.bold, fontSize: 15);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryDarkGreen =
+        isDark ? const Color(0xFFC5A059) : const Color(0xFF003527);
+    final mutedGreen =
+        isDark ? const Color(0xFF1E293B) : const Color(0xFFE8F0EC);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryDarkGreen : mutedGreen,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? primaryDarkGreen : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: _fontStyle().copyWith(
+                color: isSelected ? Colors.white : const Color(0xFF4A4A4A),
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(height: 4),
+              const Icon(Icons.check_circle_rounded,
+                  color: Colors.white, size: 14),
+            ],
+          ],
         ),
       ),
     );

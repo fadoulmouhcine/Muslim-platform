@@ -16,6 +16,16 @@ class TajweedService {
   //         pause marks (ۗ ۖ ۘ ۙ ۚ ۛ ۜ ۝ ۞ ۟ ۠ ۡ ۢ ۣ ۤ),
   //         Arabic PUA ornaments (U+FD3E..U+FDFF range markers),
   //         zero-width non-joiners used for Uthmanic justification.
+  //         ✅ Also strips U+FC00-U+FD3F — the per-ayah "end of ayah"
+  //         ligature codepoints used by the KFGQPC-style Uthmanic (Hafs)
+  //         font to render a distinct ornament for every single ayah
+  //         number. These codepoints are NOT the real "ornate parenthesis"
+  //         Unicode characters — they are a font-specific ligature hack
+  //         (a different codepoint per ayah number), so switching to a
+  //         normal typeface (Amiri/Cairo/Aref Ruqaa) for "القرآن البسيط"
+  //         would otherwise render a random/incorrect Arabic ligature
+  //         glyph at the end of every verse. The reading screen instead
+  //         renders its own explicit ayah-number badge for Simple mode.
   // ---------------------------------------------------------------------------
   static final RegExp _plainStripRegex = RegExp(
     r'['
@@ -28,6 +38,7 @@ class TajweedService {
     r'\u06E5-\u06E6' // ۥ ۦ              — Small waw, small ya ligature
     r'\u200C-\u200F' // ZWNJ, ZWJ, LRM, RLM — invisible formatting chars
     r'\u0600-\u0605' // ؀ ؁ ؂ ؃ ؄ ؅    — Arabic number sign / footnote
+    r'\uFC00-\uFD3F' // per-ayah "end of ayah" font-specific ligatures
     r']',
   );
 
@@ -43,7 +54,7 @@ class TajweedService {
 
     // Regles Simples (Demo)
     // 1. Lafd Jalala
-    RegExp regex = RegExp(r'(ٱللَّهِ|ٱللَّهَ|ٱللَّهُ|لِلَّهِ|ٱللَّهُمَّ)');
+    RegExp regex = RegExp(r'(ٱللَّهِ|ٱللَّهَ|ٱللَّهُ|لِلَّهِ|ٱللَّهُمَّ)');
 
     text.splitMapJoin(
       regex,

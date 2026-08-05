@@ -277,18 +277,52 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // --- إعدادات خط "القرآن البسيط" ---
+  // ✅ Font family picker for "القرآن البسيط" (Simple Quran mode). All
+  // options are clean, fully-Arabic-script-capable, bundled fonts (no
+  // network fetching — see `GoogleFonts.config.allowRuntimeFetching` in
+  // main.dart). Amiri remains the default (traditional Naskh, ideal for
+  // stacked harakāt), while Cairo and Aref Ruqaa offer alternative modern/
+  // calligraphic clean reading styles.
+  String _simpleFontFamily = 'Amiri';
+  String get simpleFontFamily => _simpleFontFamily;
+
+  static const Map<String, String> simpleFontOptions = {
+    'Amiri': 'أميري',
+    'Cairo': 'القاهرة',
+    'ArefRuqaa': 'عارف رقعة',
+  };
+
+  Future<void> setSimpleFontFamily(String family) async {
+    if (!simpleFontOptions.containsKey(family)) return;
+    if (_simpleFontFamily != family) {
+      _simpleFontFamily = family;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('simpleFontFamily', family);
+      notifyListeners();
+    }
+  }
+
   // --- Font & Path Helpers ---
   String get currentFontFamily {
+    // index 1 = "القرآن البسيط" (Simple): the user-selected clean typeface
+    // (see `simpleFontFamily`/`setSimpleFontFamily`) is used — it handles
+    // stacked harakāt without metric collisions. The reading screen further
+    // strips complex Tajweed/stop-sign annotation marks for this mode via
+    // `TajweedService.simplifyForPlainMode()`, while keeping the standard
+    // essential diacritics (fatha/damma/kasra/sukun/shadda) intact.
     if (_quranFontStyleIndex == 1) {
-      return GoogleFonts.amiri().fontFamily ?? 'Amiri';
-    }
-    // index 2 = "القرآن البسيط": Amiri is the correct typeface for clean Quran
-    // reading — it handles stacked harakāt without metric collisions.
-    // The reading screen further strips annotation marks for this mode.
-    if (_quranFontStyleIndex == 2) {
-      return GoogleFonts.amiri().fontFamily ?? 'Amiri';
+      switch (_simpleFontFamily) {
+        case 'Cairo':
+          return GoogleFonts.cairo().fontFamily ?? 'Cairo';
+        case 'ArefRuqaa':
+          return GoogleFonts.arefRuqaa().fontFamily ?? 'Aref Ruqaa';
+        default:
+          return GoogleFonts.amiri().fontFamily ?? 'Amiri';
+      }
     }
     if (_quranType == 'warsh') return 'Warsh';
+
     if (_quranType == 'qaloun') return 'Qaloun';
     if (_quranType == 'sousi') return 'Sousi';
     if (_quranType == 'douri') return 'Douri';
@@ -406,7 +440,27 @@ class SettingsProvider with ChangeNotifier {
     _quranType = prefs.getString('quranType') ?? 'hafs';
     _numberType = prefs.getString('numberType') ?? 'arabic';
     _isTajweedMode = prefs.getBool('isTajweedMode') ?? false;
-    _quranFontStyleIndex = prefs.getInt('quranFontStyleIndex') ?? 0;
+    // ✅ Migration: "القرآن النسخ" (old index 1) was removed, leaving only
+    // two options — "القرآن العثماني" (0) and "القرآن البسيط" (was index 2,
+    // now index 1). Remap any previously-saved value so existing users don't
+    // land on a now-nonexistent option.
+    final savedFontStyleIndex = prefs.getInt('quranFontStyleIndex') ?? 0;
+    if (savedFontStyleIndex == 2) {
+      _quranFontStyleIndex = 1; // Old "Simple" -> new "Simple" slot.
+    } else if (savedFontStyleIndex == 1) {
+      _quranFontStyleIndex = 0; // Old "Naskh" (removed) -> fallback Uthmanic.
+    } else {
+      _quranFontStyleIndex = 0;
+    }
+
+    // ✅ "القرآن البسيط" font family picker: default to 'Amiri' if unset or
+    // if a previously-saved value is no longer a valid/known option.
+    final savedSimpleFontFamily = prefs.getString('simpleFontFamily');
+    _simpleFontFamily = (savedSimpleFontFamily != null &&
+            simpleFontOptions.containsKey(savedSimpleFontFamily))
+        ? savedSimpleFontFamily
+        : 'Amiri';
+
 
     // Adhan
     _adhanSound = prefs.getString('adhanSound') ?? 'adhan_hamza';

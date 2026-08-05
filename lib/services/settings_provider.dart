@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:adhan/adhan.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'official_prayer_times_service.dart';
 import 'quran_service.dart';
 
 class SettingsProvider with ChangeNotifier {
@@ -389,9 +388,10 @@ class SettingsProvider with ChangeNotifier {
         params = CalculationMethod.umm_al_qura.getParameters();
         break;
     }
-    params.madhab = Madhab.shafi;
+    params.madhab = _madhab == 'hanafi' ? Madhab.hanafi : Madhab.shafi;
     return params;
   }
+
 
   // --- Load Settings ---
   Future<void> loadSettings() async {
@@ -417,6 +417,8 @@ class SettingsProvider with ChangeNotifier {
     _pendingCountryCode = prefs.getString('pendingCountryCode');
     _previousMethodBeforeAutoSwitch =
         prefs.getString('previousMethodBeforeAutoSwitch');
+    _madhab = prefs.getString('prayerMadhab') ?? 'shafi';
+
 
     String? muteJson = prefs.getString('prayerMuteStatus');
     if (muteJson != null) {
@@ -669,7 +671,6 @@ class SettingsProvider with ChangeNotifier {
         await prefs.setString(
             'previousMethodBeforeAutoSwitch', _previousMethodBeforeAutoSwitch!);
       }
-      await OfficialPrayerTimesService.clearCache();
 
       final countryName = _getCountryNameInArabic(code);
       final methodName = _getMethodNameInArabic(targetMethod);
@@ -808,10 +809,25 @@ class SettingsProvider with ChangeNotifier {
       _calculationMethod = method;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('calculationMethod', method);
-      await OfficialPrayerTimesService.clearCache();
       notifyListeners();
     }
   }
+
+  // --- إعدادات المذهب الفقهي (Shafi'i / Hanafi) ---
+  // Affects the Asr prayer time calculation (shadow-length factor).
+  String _madhab = 'shafi'; // 'shafi' or 'hanafi'
+  String get madhab => _madhab;
+
+  Future<void> setMadhab(String value) async {
+    if (value != 'shafi' && value != 'hanafi') return;
+    if (_madhab != value) {
+      _madhab = value;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('prayerMadhab', value);
+      notifyListeners();
+    }
+  }
+
 
   Future<void> setPreFajrAlarmMinutes(int? minutes) async {
     _preFajrAlarmMinutes = minutes;

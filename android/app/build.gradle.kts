@@ -15,8 +15,22 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
-val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toInt() ?: 1
-val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+// ✅ Task 1.4: Read versionName/versionCode from pubspec.yaml (single source of
+// truth for app versioning) instead of local.properties, which is a
+// machine-local, gitignored file that shouldn't drive release version numbers.
+// pubspec.yaml format: "version: 1.0.0+1" -> name="1.0.0", code=1
+val pubspecFile = rootProject.file("../pubspec.yaml")
+val pubspecVersionLine = pubspecFile.readLines()
+    .firstOrNull { it.trim().startsWith("version:") }
+    ?.substringAfter("version:")
+    ?.trim()
+    ?: "1.0.0+1"
+
+val flutterVersionName = pubspecVersionLine.substringBefore("+").trim()
+val flutterVersionCode = pubspecVersionLine
+    .substringAfter("+", "1")
+    .trim()
+    .toIntOrNull() ?: 1
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -24,8 +38,23 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// ✅ Task 1.5: Gradle safeguard — fail the build immediately (during
+// configuration) if a release-type task was requested but key.properties
+// is missing, instead of silently falling back to debug signing and
+// producing an unsigned/mis-signed release artifact.
+val isReleaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+if (isReleaseTaskRequested && !keystorePropertiesFile.exists()) {
+    throw GradleException(
+        "❌ Release build requested but 'android/key.properties' is missing.\n" +
+        "   Copy 'android/key.properties.example' to 'android/key.properties' and fill in your\n" +
+        "   real signing credentials before building a release artifact."
+    )
+}
+
 android {
-    namespace = "com.example.muslim"
+    namespace = "com.fadoul.muslimplatform"
     
     // ✅ 1. SDK Version
     compileSdk = 36

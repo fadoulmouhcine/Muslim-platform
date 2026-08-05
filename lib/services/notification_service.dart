@@ -288,7 +288,12 @@ class NotificationService {
         break;
     }
     await prefs.setInt('native_calculation_method_index', nativeMethodIndex);
-    await prefs.setInt('native_madhab_index', 1); // Shafi
+    // ✅ Read the user's actual Madhab preference (Shafi'i=1 / Hanafi=2)
+    // instead of a hardcoded value, so the native alarm scheduler (used for
+    // background rescheduling) stays in sync with the in-app setting.
+    final String madhabPref = prefs.getString('prayerMadhab') ?? 'shafi';
+    await prefs.setInt(
+        'native_madhab_index', madhabPref == 'hanafi' ? 2 : 1);
     await prefs.setInt(
         'native_notification_offset', prefs.getInt('notificationOffset') ?? 0);
 
@@ -697,7 +702,9 @@ class NotificationService {
         params = CalculationMethod.umm_al_qura.getParameters();
         break;
     }
-    params.madhab = Madhab.shafi;
+    // ✅ Read the user's actual Madhab preference instead of hardcoding Shafi.
+    final String madhabPref = prefs.getString('prayerMadhab') ?? 'shafi';
+    params.madhab = madhabPref == 'hanafi' ? Madhab.hanafi : Madhab.shafi;
 
     // 4. الجدولة (تلقائياً كتمحي القديم وكدير 3 ايام جداد)
     // هنا يمكننا نزيدو العدد ل 7 أيام مثلاً إذا بغينا

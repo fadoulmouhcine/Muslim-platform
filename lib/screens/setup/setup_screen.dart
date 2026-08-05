@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; // For blur effects
 import '../../services/settings_provider.dart';
 import '../../services/arabic_plural_helper.dart';
+import '../../services/vibration_service.dart';
 import '../main_screen.dart';
 
 class SetupScreen extends StatefulWidget {
@@ -14,9 +15,14 @@ class SetupScreen extends StatefulWidget {
   State<SetupScreen> createState() => _SetupScreenState();
 }
 
+enum _LocationStepState { idle, requesting, granted, denied }
+
 class _SetupScreenState extends State<SetupScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  static const int _totalPages = 4;
+
+  _LocationStepState _locationState = _LocationStepState.idle;
 
   // ألوان البريميوم
   final Color _bgDark = const Color(0xFF0B1016);
@@ -28,9 +34,17 @@ class _SetupScreenState extends State<SetupScreen> {
     super.dispose();
   }
 
+  void _goToPage(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutQuart,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ✅ 1. استدعاء Settings هنا باش نطبقو الأرقام على Header
+    // ✅ استدعاء Settings هنا باش نطبقو الأرقام على Header
     final settings = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
@@ -61,41 +75,36 @@ class _SetupScreenState extends State<SetupScreen> {
                 // Header
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                   child: Row(
                     children: [
-                      if (_currentPage > 0)
-                        InkWell(
-                          onTap: () {
-                            _pageController.previousPage(
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeOutQuart,
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(50),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white10),
-                              shape: BoxShape.circle,
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 250),
+                        opacity: _currentPage > 0 ? 1 : 0,
+                        child: IgnorePointer(
+                          ignoring: _currentPage == 0,
+                          child: InkWell(
+                            onTap: () {
+                              VibrationService.triggerHaptic(settings,
+                                  type: HapticType.selection);
+                              _goToPage(_currentPage - 1);
+                            },
+                            borderRadius: BorderRadius.circular(50),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.white10),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.arrow_back,
+                                  color: Colors.white70, size: 20),
                             ),
-                            child: const Icon(Icons.arrow_back,
-                                color: Colors.white70, size: 20),
                           ),
-                        )
-                      else
-                        const SizedBox(width: 40),
-
-                      const Spacer(),
-                      // ✅ 2. تطبيق الأرقام على العداد (الخطوة 1 من 4)
-                      Text(
-                        "الخطوة ${settings.replaceDigits('${_currentPage + 1}')} من ${settings.replaceDigits('4')}",
-                        style: GoogleFonts.cairo(
-                          color: Colors.white30,
-                          fontSize: 12,
-                          letterSpacing: 1.5,
                         ),
                       ),
+                      const Spacer(),
+                      // ✅ Dot progress indicator (more visual than text-only counter)
+                      _buildDotIndicator(),
                       const Spacer(),
                       const SizedBox(width: 40),
                     ],
@@ -109,10 +118,22 @@ class _SetupScreenState extends State<SetupScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     onPageChanged: (idx) => setState(() => _currentPage = idx),
                     children: [
-                      _buildLanguagePage(settings),
-                      _buildLocationPage(),
-                      _buildGoalsPage(settings),
-                      _buildQuranPage(settings),
+                      _AnimatedSetupPage(
+                        pageKey: 'numerals',
+                        child: _buildLanguagePage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'location',
+                        child: _buildLocationPage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'goals',
+                        child: _buildGoalsPage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'quran',
+                        child: _buildQuranPage(settings),
+                      ),
                     ],
                   ),
                 ),
@@ -134,20 +155,25 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                       ),
                       onPressed: () {
-                        if (_currentPage < 3) {
-                          _pageController.nextPage(
-                            duration: const Duration(milliseconds: 500),
-                            curve: Curves.easeOutQuart,
-                          );
+                        VibrationService.triggerHaptic(settings,
+                            type: HapticType.medium);
+                        if (_currentPage < _totalPages - 1) {
+                          _goToPage(_currentPage + 1);
                         } else {
                           _finishSetup();
                         }
                       },
-                      child: Text(
-                        _currentPage == 3 ? "ابدأ الرحلة" : "متابعة",
-                        style: GoogleFonts.cairo(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Text(
+                          _currentPage == _totalPages - 1
+                              ? "ابدأ الرحلة"
+                              : "متابعة",
+                          key: ValueKey(_currentPage == _totalPages - 1),
+                          style: GoogleFonts.cairo(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -158,6 +184,29 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDotIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(_totalPages, (index) {
+        final bool isActive = index == _currentPage;
+        final bool isPast = index < _currentPage;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: isActive ? 22 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: isActive || isPast
+                ? _primary
+                : Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
     );
   }
 
@@ -180,8 +229,7 @@ class _SetupScreenState extends State<SetupScreen> {
           Text("اختر شكل الأرقام المفضل لديك في التطبيق.",
               style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
           const SizedBox(height: 50),
-          Text("الأرقام",
-
+          Text("نظام الأرقام",
               style: GoogleFonts.cairo(
                   color: _primary, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),
@@ -191,11 +239,13 @@ class _SetupScreenState extends State<SetupScreen> {
                   child: _buildOptionItem(
                       "١٢٣",
                       settings.numberType == 'arabic',
-                      () => settings.setNumberType('arabic'))),
+                      () => _selectNumberType(settings, 'arabic'))),
               const SizedBox(width: 12),
               Expanded(
-                  child: _buildOptionItem("123", settings.numberType == 'latin',
-                      () => settings.setNumberType('latin'))),
+                  child: _buildOptionItem(
+                      "123",
+                      settings.numberType == 'latin',
+                      () => _selectNumberType(settings, 'latin'))),
             ],
           ),
         ],
@@ -203,21 +253,48 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _buildLocationPage() {
+  void _selectNumberType(SettingsProvider settings, String type) {
+    VibrationService.triggerHaptic(settings, type: HapticType.selection);
+    settings.setNumberType(type);
+  }
+
+  Widget _buildLocationPage(SettingsProvider settings) {
+    final bool isGranted = _locationState == _LocationStepState.granted;
+    final bool isDenied = _locationState == _LocationStepState.denied;
+    final bool isRequesting = _locationState == _LocationStepState.requesting;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
             width: 100,
             height: 100,
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: _primary.withValues(alpha: 0.3), width: 1),
-                color: _primary.withValues(alpha: 0.1)),
-            child: Icon(Icons.near_me_rounded, size: 40, color: _primary),
+                    color: (isGranted ? Colors.greenAccent : _primary)
+                        .withValues(alpha: 0.3),
+                    width: 1),
+                color: (isGranted ? Colors.greenAccent : _primary)
+                    .withValues(alpha: 0.1)),
+            child: isRequesting
+                ? Padding(
+                    padding: const EdgeInsets.all(28.0),
+                    child: CircularProgressIndicator(
+                      color: _primary,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Icon(
+                    isGranted
+                        ? Icons.check_circle_rounded
+                        : Icons.near_me_rounded,
+                    size: 40,
+                    color: isGranted ? Colors.greenAccent : _primary,
+                  ),
           ),
           const SizedBox(height: 40),
           Text("تحديد الموقع",
@@ -227,24 +304,85 @@ class _SetupScreenState extends State<SetupScreen> {
                   color: Colors.white)),
           const SizedBox(height: 15),
           Text(
-              "نحتاج إلى تفعيل الموقع لحساب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك.",
+              isGranted
+                  ? "تم منح صلاحية الموقع بنجاح! سنحسب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك."
+                  : "نحتاج إلى تفعيل الموقع لحساب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك — تُحسب بالكامل بدون إنترنت.",
               textAlign: TextAlign.center,
               style: GoogleFonts.cairo(
                   fontSize: 16, color: Colors.white54, height: 1.6)),
           const SizedBox(height: 40),
+          if (isDenied) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 10),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.redAccent, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "تم رفض الصلاحية. يمكنك المتابعة وتفعيلها لاحقاً من الإعدادات.",
+                      style: GoogleFonts.cairo(
+                          color: Colors.redAccent.shade100, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () async {
-                await Geolocator.requestPermission();
-              },
+              onPressed: isGranted || isRequesting
+                  ? null
+                  : () async {
+                      VibrationService.triggerHaptic(settings,
+                          type: HapticType.light);
+                      setState(() => _locationState =
+                          _LocationStepState.requesting);
+                      LocationPermission permission =
+                          await Geolocator.checkPermission();
+                      if (permission == LocationPermission.denied) {
+                        permission = await Geolocator.requestPermission();
+                      }
+                      if (!mounted) return;
+                      final granted =
+                          permission == LocationPermission.always ||
+                              permission == LocationPermission.whileInUse;
+                      setState(() {
+                        _locationState = granted
+                            ? _LocationStepState.granted
+                            : _LocationStepState.denied;
+                      });
+                      if (granted) {
+                        VibrationService.triggerHaptic(settings,
+                            type: HapticType.medium);
+                        await Future.delayed(
+                            const Duration(milliseconds: 500));
+                        if (mounted) _goToPage(_currentPage + 1);
+                      }
+                    },
               style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  side: BorderSide(
+                      color: (isGranted ? Colors.greenAccent : Colors.white)
+                          .withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
-                  foregroundColor: Colors.white),
-              child: Text("منح الصلاحية",
+                  foregroundColor:
+                      isGranted ? Colors.greenAccent : Colors.white),
+              child: Text(
+                  isGranted
+                      ? "تم منح الصلاحية ✓"
+                      : (isDenied ? "إعادة المحاولة" : "منح الصلاحية"),
                   style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             ),
           )
@@ -282,7 +420,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 decoration: BoxDecoration(
                     color: _primary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8)),
-                // ✅ 3. تطبيق الأرقام على عدد الأحزاب
+                // ✅ تطبيق الأرقام على عدد الأحزاب
                 child: Text(
                     settings.replaceDigits(
                         ArabicPluralHelper.formatHizb(settings.dailyHizbGoal)),
@@ -305,15 +443,19 @@ class _SetupScreenState extends State<SetupScreen> {
               min: 1,
               max: 10,
               divisions: 9,
-              onChanged: (val) => settings.updateGoals(hizb: val.toInt()),
+              onChanged: (val) {
+                VibrationService.triggerHaptic(settings,
+                    type: HapticType.selection);
+                settings.updateGoals(hizb: val.toInt());
+              },
             ),
           ),
           const SizedBox(height: 40),
-          _buildMinimalSwitch("تذكير أذكار الصباح", settings.remindAdhkarSabah,
-              (v) => settings.updateGoals(sabah: v)),
+          _buildMinimalSwitch(settings, "تذكير أذكار الصباح",
+              settings.remindAdhkarSabah, (v) => settings.updateGoals(sabah: v)),
           const SizedBox(height: 15),
-          _buildMinimalSwitch("تذكير أذكار المساء", settings.remindAdhkarMasaa,
-              (v) => settings.updateGoals(masaa: v)),
+          _buildMinimalSwitch(settings, "تذكير أذكار المساء",
+              settings.remindAdhkarMasaa, (v) => settings.updateGoals(masaa: v)),
         ],
       ),
     );
@@ -335,7 +477,7 @@ class _SetupScreenState extends State<SetupScreen> {
               style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
           const SizedBox(height: 30),
 
-          // ✅ 4. القائمة الكاملة للروايات (6 روايات)
+          // ✅ القائمة الكاملة للروايات (6 روايات)
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -384,7 +526,10 @@ class _SetupScreenState extends State<SetupScreen> {
     double width = (MediaQuery.of(context).size.width - 48 - 12) / 2;
 
     return GestureDetector(
-      onTap: () => settings.setQuranType(value),
+      onTap: () {
+        VibrationService.triggerHaptic(settings, type: HapticType.selection);
+        settings.setQuranType(value);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: width,
@@ -414,8 +559,8 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _buildMinimalSwitch(
-      String title, bool value, Function(bool) onChanged) {
+  Widget _buildMinimalSwitch(SettingsProvider settings, String title,
+      bool value, Function(bool) onChanged) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -423,7 +568,11 @@ class _SetupScreenState extends State<SetupScreen> {
             style: GoogleFonts.cairo(color: Colors.white70, fontSize: 16)),
         Switch(
             value: value,
-            onChanged: onChanged,
+            onChanged: (v) {
+              VibrationService.triggerHaptic(settings,
+                  type: HapticType.selection);
+              onChanged(v);
+            },
             activeThumbColor: _bgDark,
             activeTrackColor: _primary,
             inactiveThumbColor: Colors.grey,
@@ -439,5 +588,35 @@ class _SetupScreenState extends State<SetupScreen> {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => const MainScreen()));
     }
+  }
+}
+
+/// ✅ Subtle fade + slide-up entrance animation wrapper for each setup page,
+/// giving the onboarding flow a more premium, polished feel as the user
+/// swipes between steps instead of an abrupt page cut.
+class _AnimatedSetupPage extends StatelessWidget {
+  final String pageKey;
+  final Widget child;
+
+  const _AnimatedSetupPage({required this.pageKey, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(pageKey),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 24),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
   }
 }

@@ -1,4 +1,4 @@
-package com.example.muslim
+package com.fadoul.muslimplatform
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity

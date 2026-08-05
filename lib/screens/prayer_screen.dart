@@ -7,7 +7,6 @@ import '../services/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/prayer_time_service.dart';
 import '../services/app_colors.dart';
-import '../services/official_prayer_times_service.dart';
 import '../services/app_clock_service.dart';
 import 'settings_screen.dart';
 
@@ -75,6 +74,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     }
   }
 
+  // ✅ 100% OFFLINE: Prayer times are computed instantly via the `adhan`
+  // astronomical calculation engine — no network round-trip is involved,
+  // so this "refresh" is really just an instant recomputation whenever the
+  // calculation method, madhab, or location changes.
   Future<void> _refreshPrayerTimes() async {
     if (mounted) {
       setState(() {
@@ -88,35 +91,13 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         Coordinates(21.4225, 39.8262);
 
     try {
-      final officialTimes =
-          await OfficialPrayerTimesService.getOfficialPrayerTimes(
-        date: DateTime.now(),
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        methodKey: settings.calculationMethod,
+      final times = PrayerTimes.today(
+        coords,
+        settings.getCalculationParameters(),
       );
-
       if (mounted) {
         setState(() {
-          _activePrayerTimes = officialTimes ??
-              PrayerTimes.today(
-                coords,
-                settings.getCalculationParameters(),
-              );
-        });
-      }
-    } catch (e) {
-      // ✅ BUG FIX: Previously a failed refresh (e.g. network/DB error) would
-      // silently leave the UI on stale/no data with zero feedback. We now
-      // fall back to locally computed prayer times so the screen never goes
-      // blank, and log the error for diagnostics.
-      debugPrint("⚠️ _refreshPrayerTimes failed: $e");
-      if (mounted) {
-        setState(() {
-          _activePrayerTimes ??= PrayerTimes.today(
-            coords,
-            settings.getCalculationParameters(),
-          );
+          _activePrayerTimes = times;
         });
       }
     } finally {

@@ -1,4 +1,4 @@
-package com.example.muslim
+package com.fadoul.muslimplatform
 
 import android.content.BroadcastReceiver
 import android.content.Context

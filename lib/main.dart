@@ -20,7 +20,6 @@ import 'services/quran_service.dart';
 import 'services/settings_provider.dart';
 import 'services/tafsir_service.dart';
 import 'services/notification_service.dart';
-import 'services/official_prayer_times_service.dart';
 
 
 // Screens
@@ -144,12 +143,6 @@ void main() async {
   }
 
   await TafsirService.loadTafsir();
-
-  // 🧹 STORAGE BLOAT FIX: Prune outdated cached prayer-time entries
-  // (older than 2 months) on every app launch so SharedPreferences storage
-  // doesn't grow unbounded over time. This is a cheap, fire-and-forget
-  // operation and never blocks app startup.
-  unawaited(OfficialPrayerTimesService.pruneOldCache());
 
   final settingsProvider = SettingsProvider();
 

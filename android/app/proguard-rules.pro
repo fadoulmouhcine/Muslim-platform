@@ -29,10 +29,10 @@
 -keep class com.batoulapps.adhan.** { *; }
 
 # --- App-specific native classes (MethodChannels, Receivers, Services) ---
-# Note: Kotlin source package/namespace remains com.example.muslim
-# (applicationId was changed to com.fadoul.muslimplatform, but the
-# Kotlin package declarations were intentionally left untouched).
--keep class com.example.muslim.** { *; }
+# Kotlin source package/namespace is now com.fadoul.muslimplatform,
+# matching the applicationId and Gradle namespace.
+-keep class com.fadoul.muslimplatform.** { *; }
+
 
 # --- Gson / JSON reflection safety (used transitively by some plugins) ---
 -keepattributes Signature

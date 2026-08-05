@@ -162,11 +162,11 @@ class HeroPrayerCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.wifi_off_rounded,
+                  const Icon(Icons.location_off_rounded,
                       color: _kGoldAccent, size: 24),
                   const SizedBox(height: 6),
                   Text(
-                    "يرجى التحقق من اتصالك بالإنترنت وإعادة المحاولة",
+                    "يرجى التأكد من تفعيل خدمة الموقع (GPS) وإعادة المحاولة",
 
                     style:
                         GoogleFonts.cairo(color: Colors.white70, fontSize: 12),

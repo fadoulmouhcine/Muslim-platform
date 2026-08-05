@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../services/app_colors.dart';
 import '../../../services/notification_service.dart';
-import '../../../services/official_prayer_times_service.dart';
 import '../../../services/settings_provider.dart';
 import '../../../services/vibration_service.dart';
 
@@ -107,6 +106,8 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
     }
   }
 
+  // ✅ 100% OFFLINE: Prayer times are always computed instantly via the
+  // `adhan` astronomical calculation engine — no network round-trip needed.
   Future<void> _rescheduleNotifications({String? customMessage}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -116,14 +117,7 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
         Coordinates coords = Coordinates(lat, lng);
         if (!mounted) return;
         final settings = Provider.of<SettingsProvider>(context, listen: false);
-        final officialTimes =
-            await OfficialPrayerTimesService.getOfficialPrayerTimes(
-          date: DateTime.now(),
-          latitude: lat,
-          longitude: lng,
-          methodKey: settings.calculationMethod,
-        );
-        PrayerTimes prayerTimes = officialTimes ??
+        PrayerTimes prayerTimes =
             PrayerTimes.today(coords, settings.getCalculationParameters());
 
         if (!mounted) return;
@@ -179,6 +173,12 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
             ),
             const SizedBox(height: 24),
             _buildCalculationMethodDropdown(
+                settings, primaryDarkGreen, mutedGreen, cardWhite),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Divider(color: Color(0xFFE1E3E2), height: 1),
+            ),
+            _buildMadhabDropdown(
                 settings, primaryDarkGreen, mutedGreen, cardWhite),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -392,6 +392,79 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
                       customMessage: "تم تحديث طريقة حساب مواقيت الصلاة بنجاح");
                 }
               },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ Madhab (Shafi'i / Hanafi) selector — affects Asr prayer time
+  // calculation via the shadow-length factor used by the offline `adhan`
+  // astronomical engine.
+  Widget _buildMadhabDropdown(SettingsProvider settings,
+      Color primaryDarkGreen, Color mutedGreen, Color cardWhite) {
+    final madhabs = {
+      'shafi': 'شافعي / مالكي / حنبلي',
+      'hanafi': 'حنفي',
+    };
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("المذهب الفقهي",
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: primaryDarkGreen)),
+              Text("يؤثر على حساب وقت صلاة العصر",
+                  style:
+                      GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600])),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+            decoration: BoxDecoration(
+              color: mutedGreen,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: madhabs.containsKey(settings.madhab)
+                    ? settings.madhab
+                    : 'shafi',
+                icon: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: Theme.of(context).colorScheme.onSurface),
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 13),
+                dropdownColor: cardWhite,
+                borderRadius: BorderRadius.circular(14),
+                items: madhabs.entries.map((e) {
+                  return DropdownMenuItem<String>(
+                    value: e.key,
+                    child: Text(e.value, overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+                onChanged: (val) async {
+                  if (val != null) {
+                    await settings.setMadhab(val);
+                    await _rescheduleNotifications(
+                        customMessage: "تم تحديث المذهب الفقهي بنجاح");
+                  }
+                },
+              ),
             ),
           ),
         ),

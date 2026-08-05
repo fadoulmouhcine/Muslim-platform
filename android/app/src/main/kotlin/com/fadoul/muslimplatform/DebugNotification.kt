@@ -1,4 +1,4 @@
-package com.example.muslim
+package com.fadoul.muslimplatform
 
 import android.app.Notification
 import android.app.NotificationChannel

@@ -6,12 +6,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:adhan/adhan.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/settings_provider.dart';
 import '../services/notification_service.dart';
-import '../services/official_prayer_times_service.dart';
 import '../services/vibration_service.dart';
 import '../main.dart'; // ✅ Import Global Key
 import 'dashboard_screen.dart';
@@ -36,7 +34,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   CalculationParameters? _params;
   String _city = "جاري تحديد الموقع...";
   bool _isLoading = true;
-  StreamSubscription<dynamic>? _connectivitySubscription;
   StreamSubscription<String>? _adhanSubscription;
 
   String _lastCalculationMethod = '';
@@ -53,7 +50,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _listenToSettingsChanges();
     });
 
-    _initConnectivityListener();
     _initAdhanTriggerListener();
     _initLocationAndPrayers();
   }
@@ -75,50 +71,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
   }
 
+  // ✅ 100% OFFLINE: Prayer times are now always computed instantly and
+  // deterministically via the `adhan` astronomical calculation engine —
+  // no network round-trip, no cache invalidation, no "no internet" state.
   void _listenToSettingsChanges() {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     _lastCalculationMethod = settings.calculationMethod;
-    settings.addListener(() async {
+    settings.addListener(() {
       if (!mounted) return;
-      if (settings.calculationMethod != _lastCalculationMethod) {
+      if (settings.calculationMethod != _lastCalculationMethod ||
+          settings.madhab !=
+              (_params?.madhab == Madhab.hanafi ? 'hanafi' : 'shafi')) {
         _lastCalculationMethod = settings.calculationMethod;
         debugPrint(
-            "⚡ Calculation Method changed to $_lastCalculationMethod -> Reactively refreshing prayer times...");
+            "⚡ Calculation settings changed -> Reactively recomputing offline prayer times...");
         final coords = _myCoordinates ?? Coordinates(21.4225, 39.8262);
-        final officialTimes =
-            await OfficialPrayerTimesService.getOfficialPrayerTimes(
-          date: DateTime.now(),
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          methodKey: _lastCalculationMethod,
-        );
-        if (mounted) {
-          setState(() {
-            _params = settings.getCalculationParameters();
-            _prayerTimes = officialTimes ?? PrayerTimes.today(coords, _params!);
-          });
-          if (_prayerTimes != null) {
-            WidgetService.updateWidgetData(
-                prayerTimes: _prayerTimes!, city: _city);
-          }
-        }
-      }
-    });
-  }
-
-  void _initConnectivityListener() {
-    _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen((results) {
-      bool isConnected = !results.contains(ConnectivityResult.none);
-      if (isConnected && (_prayerTimes == null || _city == "بدون إنترنت")) {
-        debugPrint(
-            "🌐 Reactive Connectivity Listener: Connection restored -> Auto-triggering prayer times sync...");
-        if (mounted) {
-          setState(() {
-            _city = "جاري تحديث المواقيت تلقائياً...";
-          });
-        }
-        _initLocationAndPrayers(showLoader: false);
+        final params = settings.getCalculationParameters();
+        final times = PrayerTimes.today(coords, params);
+        setState(() {
+          _params = params;
+          _prayerTimes = times;
+        });
+        WidgetService.updateWidgetData(prayerTimes: times, city: _city);
       }
     });
   }
@@ -163,7 +137,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _connectivitySubscription?.cancel();
     _adhanSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -193,6 +166,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// ✅ 100% OFFLINE PRAYER-TIME RESOLUTION FLOW
+  /// Prayer times are always computed locally via the `adhan` astronomical
+  /// engine the instant we have GPS coordinates (or a cached fallback) —
+  /// no network dependency whatsoever. The only thing that can legitimately
+  /// block this flow is the *location* subsystem itself (GPS service off,
+  /// or permission denied), never connectivity.
   Future<void> _initLocationAndPrayers({bool showLoader = true}) async {
     if (showLoader) {
       setState(() {
@@ -213,55 +192,32 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       bool hasCache =
           cachedLat != null && cachedLng != null && cachedCity != null;
 
-      // 1. INSTANT OFFLINE CACHE LOAD (State C)
+      // 1. INSTANT OFFLINE CALCULATION FROM CACHED COORDINATES
+      // (Shown immediately on every launch — zero network, zero delay.)
       if (hasCache) {
-        debugPrint("📦 Fast Cache Hit! Loading instantly.");
+        debugPrint("📦 Fast Cache Hit! Computing offline prayer times instantly.");
         _myCoordinates = Coordinates(cachedLat, cachedLng);
         _city = cachedCity;
         if (!mounted) return;
         final settings = Provider.of<SettingsProvider>(context, listen: false);
         _params = settings.getCalculationParameters();
-        final officialTimes =
-            await OfficialPrayerTimesService.getOfficialPrayerTimes(
-          date: DateTime.now(),
-          latitude: cachedLat,
-          longitude: cachedLng,
-          methodKey: settings.calculationMethod,
-        );
+        final times = PrayerTimes.today(_myCoordinates!, _params!);
         if (mounted) {
           setState(() {
-            _prayerTimes =
-                officialTimes ?? PrayerTimes.today(_myCoordinates!, _params!);
+            _prayerTimes = times;
             _isLoading = false;
           });
-          WidgetService.updateWidgetData(
-              prayerTimes: _prayerTimes!, city: _city);
+          WidgetService.updateWidgetData(prayerTimes: times, city: _city);
         }
       }
 
-      // 2. CHECK NETWORK CONNECTIVITY
-      final List<ConnectivityResult> connectivityResult =
-          await (Connectivity().checkConnectivity());
-      bool isConnected = !connectivityResult.contains(ConnectivityResult.none);
-
-      if (!isConnected) {
-        if (!hasCache) {
-          // STATE D: First Launch "Zero-Data" (No Network, No Cache)
-          debugPrint("❌ Zero-Data State. Aborting.");
-          if (mounted) {
-            setState(() {
-              _city = "بدون إنترنت";
-              _isLoading = false;
-            });
-          }
-        }
-        return; // We stop here if offline.
-      }
-
-      // 3. SILENT FOREGROUND SYNC (State B - Network is available)
+      // 2. LOCATION SERVICE / PERMISSION CHECKS
+      // (No connectivity check needed — the calculation engine is offline.)
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (!hasCache && mounted) await _showEnableLocationDialog();
+        if (!hasCache && mounted) {
+          await _showEnableLocationDialog();
+        }
         return;
       }
 
@@ -289,7 +245,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         return;
       }
 
-      // Now fetch silently in background (low accuracy for speed)
+      // 3. Fetch a fresh GPS fix in the background (low accuracy for speed)
+      // to refine location/city — prayer times are recomputed offline
+      // the instant we have coordinates, regardless of network state.
       try {
         Position position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -304,7 +262,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         debugPrint("⚠️ Silent GPS Sync Failed: $e");
         if (!hasCache && mounted) {
           setState(() {
-            _city = "خطأ في الموقع";
+            _city = "تعذر تحديد الموقع";
             _isLoading = false;
           });
         }
@@ -364,7 +322,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         }
       }
     } catch (e) {
-      debugPrint("⚠️ Error getting city/country via GPS geocoding: $e");
+      // ✅ Reverse-geocoding (city name) requires network, but the prayer
+      // time calculation itself does NOT — so a failure here only affects
+      // the displayed city label, never the accuracy of the prayer times.
+      debugPrint("⚠️ Error getting city/country via geocoding (network?): $e");
     }
 
     if (countryCode == null || countryCode.isEmpty) {
@@ -400,30 +361,23 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     await prefs.setDouble('longitude', position.longitude);
     await prefs.setString('city', newCity);
 
-    PrayerTimes? fetchedTimes;
-    if (mounted) {
-      final settings = Provider.of<SettingsProvider>(context, listen: false);
-      _params = settings.getCalculationParameters();
-      fetchedTimes = await OfficialPrayerTimesService.getOfficialPrayerTimes(
-        date: DateTime.now(),
-        latitude: position.latitude,
-        longitude: position.longitude,
-        methodKey: settings.calculationMethod,
-      );
-    }
+    if (!mounted) return;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    _params = settings.getCalculationParameters();
+    // ✅ Fully offline astronomical calculation — instant, deterministic,
+    // no network round-trip required.
+    final PrayerTimes computedTimes =
+        PrayerTimes.today(_myCoordinates!, _params!);
 
     if (mounted) {
       setState(() {
         _city = newCity;
-        _prayerTimes =
-            fetchedTimes ?? PrayerTimes.today(_myCoordinates!, _params!);
+        _prayerTimes = computedTimes;
         _isLoading = false;
       });
 
-      if (_prayerTimes != null) {
-        NotificationService.schedulePrayerNotifications(_prayerTimes!, context);
-        WidgetService.updateWidgetData(prayerTimes: _prayerTimes!, city: _city);
-      }
+      NotificationService.schedulePrayerNotifications(computedTimes, context);
+      WidgetService.updateWidgetData(prayerTimes: computedTimes, city: _city);
     }
   }
 

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +10,57 @@ import '../../../services/app_colors.dart';
 import '../../../services/settings_provider.dart';
 import '../../../services/silent_mode_service.dart';
 import '../../../services/vibration_service.dart';
+import '../../../constants/app_strings.dart';
+
+
+// ✅ Task 4.7: Top-level helpers so they can run on a background isolate via
+// `compute()`. Both are strictly scoped to the single directory path passed
+// in (the app's own temp/cache directory from `getTemporaryDirectory()`) —
+// never anything outside of it.
+
+/// Recursively sums the size (bytes) of all files under [dirPath].
+int _computeDirectorySizeIsolate(String dirPath) {
+  final dir = Directory(dirPath);
+  if (!dir.existsSync()) return 0;
+  int total = 0;
+  try {
+    for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+      if (entity is File) {
+        try {
+          total += entity.lengthSync();
+        } catch (_) {
+          // Ignore files that vanish/are inaccessible mid-scan.
+        }
+      }
+    }
+  } catch (_) {}
+  return total;
+}
+
+/// Deletes only the *contents* of [dirPath] (never the directory itself),
+/// returning the number of bytes freed. Runs off the UI thread via
+/// `compute()` so large caches never jank the UI.
+int _clearDirectoryContentsIsolate(String dirPath) {
+  final dir = Directory(dirPath);
+  if (!dir.existsSync()) return 0;
+  int freed = 0;
+  try {
+    for (final entity in dir.listSync(followLinks: false)) {
+      try {
+        if (entity is File) {
+          freed += entity.lengthSync();
+          entity.deleteSync();
+        } else if (entity is Directory) {
+          freed += _computeDirectorySizeIsolate(entity.path);
+          entity.deleteSync(recursive: true);
+        }
+      } catch (_) {
+        // Skip locked/in-use files instead of aborting the whole operation.
+      }
+    }
+  } catch (_) {}
+  return freed;
+}
 
 class GeneralSettingsTab extends StatefulWidget {
   const GeneralSettingsTab({super.key});
@@ -16,6 +70,110 @@ class GeneralSettingsTab extends StatefulWidget {
 }
 
 class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
+  // ✅ Task 4.7: Real, computed cache size instead of a hardcoded "250 MB".
+  String _cacheSizeLabel = "جارٍ الحساب...";
+  bool _isClearingCache = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshCacheSize();
+  }
+
+  Future<void> _refreshCacheSize() async {
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      final bytes =
+          await compute(_computeDirectorySizeIsolate, cacheDir.path);
+      if (mounted) {
+        setState(() {
+          _cacheSizeLabel = _formatBytes(bytes);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cacheSizeLabel = "غير معروف";
+        });
+      }
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return "0 MB";
+    const int kb = 1024;
+    const int mb = kb * 1024;
+    if (bytes < mb) {
+      return "${(bytes / kb).toStringAsFixed(1)} KB";
+    }
+    return "${(bytes / mb).toStringAsFixed(1)} MB";
+  }
+
+  // ✅ Task 4.7: UI confirmation dialog before any destructive deletion.
+  Future<void> _confirmAndClearCache(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text("مسح الملفات المؤقتة؟",
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        content: Text(
+          "سيتم حذف الملفات المؤقتة ($_cacheSizeLabel) الخاصة بالتطبيق فقط. هذا الإجراء لا يمكن التراجع عنه.",
+          style: GoogleFonts.cairo(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(AppStrings.cancel, style: GoogleFonts.cairo(color: Colors.grey)),
+
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text("مسح",
+                style: GoogleFonts.cairo(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    setState(() => _isClearingCache = true);
+
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      // ✅ Task 4.7: Runs off the UI thread via compute(), and is strictly
+      // scoped to this app's own temp/cache subdirectory contents (the
+      // directory itself is preserved — only its contents are purged).
+      await compute(_clearDirectoryContentsIsolate, cacheDir.path);
+      await _refreshCacheSize();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("تم مسح الملفات المؤقتة بنجاح",
+                style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: const Color(0xFF003527),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("حدث خطأ أثناء مسح الملفات المؤقتة",
+                style: GoogleFonts.cairo(color: Colors.white)),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isClearingCache = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
@@ -62,10 +220,12 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("الملفات الصوتية",
+                  Text("الملفات المؤقتة",
                       style: GoogleFonts.cairo(
                           fontSize: 14, color: Colors.grey[700])),
-                  Text("250 MB",
+                  // ✅ Task 4.7: Real, computed cache size instead of a
+                  // hardcoded "250 MB" placeholder.
+                  Text(_cacheSizeLabel,
                       style: GoogleFonts.cairo(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -83,23 +243,24 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () async {
-                    final cacheDir = await getTemporaryDirectory();
-                    if (cacheDir.existsSync()) {
-                      cacheDir.deleteSync(recursive: true);
-                    }
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("تم مسح الملفات المؤقتة بنجاح",
-                              style: GoogleFonts.cairo(color: Colors.white)),
-                          backgroundColor: const Color(0xFF003527),
-                        ),
-                      );
-                    }
-                  },
-                  child: Text("مسح الملفات المؤقتة",
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  // ✅ Task 4.7: Deletion is now scoped to the app's own
+                  // temp/cache subdirectory only (never anything outside of
+                  // it), runs off the UI thread via compute(), recomputes
+                  // the actual cache size afterwards, and requires explicit
+                  // user confirmation before deleting anything.
+                  onPressed:
+                      _isClearingCache ? null : () => _confirmAndClearCache(context),
+                  child: _isClearingCache
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Color(0xFF003527),
+                          ),
+                        )
+                      : Text("مسح الملفات المؤقتة",
+                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

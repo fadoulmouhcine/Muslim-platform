@@ -6,17 +6,21 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    
+
     private var methodChannel: MethodChannel? = null
     private var widgetChannel: MethodChannel? = null
 
     companion object {
         var initialPayload: String? = null
+
+        // ✅ Task 3.5: Centralized channel name constant (matches
+        // lib/services/method_channel_constants.dart -> MethodChannelNames.widget)
+        const val WIDGET_CHANNEL_NAME = "com.example.muslim/widget"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
+
         // 🔗 تسجيل MethodChannel للأذان
         methodChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -27,7 +31,7 @@ class MainActivity : FlutterActivity() {
         // 🔗 تسجيل MethodChannel للويدجت
         widgetChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.example.muslim/widget"
+            WIDGET_CHANNEL_NAME
         )
         widgetChannel?.setMethodCallHandler { call, result ->
             if (call.method == "reloadWidget") {

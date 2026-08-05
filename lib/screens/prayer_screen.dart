@@ -6,6 +6,7 @@ import 'dart:ui';
 import '../services/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/prayer_time_service.dart';
+import '../services/prayer_times_controller.dart';
 import '../services/app_colors.dart';
 import '../services/app_clock_service.dart';
 import 'settings_screen.dart';
@@ -86,14 +87,15 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     }
 
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    final coords = _activePrayerTimes?.coordinates ??
-        widget.prayerTimes?.coordinates ??
-        Coordinates(21.4225, 39.8262);
+    // ✅ Task 4.2: Coordinates/params fallback logic is now centralized in
+    // `PrayerTimesController` instead of being duplicated here.
+    final coords =
+        _activePrayerTimes?.coordinates ?? widget.prayerTimes?.coordinates;
 
     try {
-      final times = PrayerTimes.today(
-        coords,
-        settings.getCalculationParameters(),
+      final times = PrayerTimesController.computeTodayTimes(
+        coordinates: coords,
+        settings: settings,
       );
       if (mounted) {
         setState(() {
@@ -117,10 +119,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
 
     final effectiveTimes = _activePrayerTimes ??
         widget.prayerTimes ??
-        PrayerTimes.today(
-          Coordinates(21.4225, 39.8262),
-          settings.getCalculationParameters(),
-        );
+        PrayerTimesController.computeTodayTimes(settings: settings);
 
     Prayer? next = effectiveTimes.nextPrayer();
     if (next == Prayer.none) {

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../services/app_colors.dart';
 import '../../../services/prayer_time_service.dart';
+import '../../../services/prayer_times_controller.dart';
 import '../../../services/settings_provider.dart';
 import '../../../services/silent_mode_service.dart';
 import '../../prayer_screen.dart';
@@ -242,10 +243,14 @@ class HeroPrayerCard extends StatelessWidget {
         child: ValueListenableBuilder<DateTime>(
           valueListenable: timeNotifier,
           builder: (context, currentTime, child) {
+            // ✅ Task 4.2: Coordinates/params fallback logic is now
+            // centralized in `PrayerTimesController` instead of being
+            // duplicated here.
             final times = prayerTimes ??
-                PrayerTimes.today(
-                  coordinates ?? Coordinates(21.4225, 39.8262),
-                  params ?? settings.getCalculationParameters(),
+                PrayerTimesController.computeTodayTimes(
+                  coordinates: coordinates,
+                  params: params,
+                  settings: settings,
                 );
             final state = PrayerDisplayState.calculateState(
               prayerTimes: times,

@@ -8,8 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../services/app_colors.dart';
 import '../../../services/notification_service.dart';
+import '../../../services/prayer_times_controller.dart';
 import '../../../services/settings_provider.dart';
 import '../../../services/vibration_service.dart';
+import '../../../services/method_channel_constants.dart'; // ✅ Task 3.5: Centralized channel names
+import '../../../constants/app_strings.dart';
+
 
 class AdhanSettingsTab extends StatefulWidget {
   const AdhanSettingsTab({super.key});
@@ -20,7 +24,8 @@ class AdhanSettingsTab extends StatefulWidget {
 
 class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
   static const MethodChannel _adhanChannel =
-      MethodChannel('com.example.muslim/adhan');
+      MethodChannel(MethodChannelNames.adhan);
+
   bool _isPlayingAdhan = false;
   Timer? _pollingTimer;
   String _currentSound = 'adhan_hamza';
@@ -117,8 +122,12 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
         Coordinates coords = Coordinates(lat, lng);
         if (!mounted) return;
         final settings = Provider.of<SettingsProvider>(context, listen: false);
-        PrayerTimes prayerTimes =
-            PrayerTimes.today(coords, settings.getCalculationParameters());
+        // ✅ Task 4.2: Route through the shared PrayerTimesController
+        // instead of duplicating this computation here.
+        PrayerTimes prayerTimes = PrayerTimesController.computeTodayTimes(
+          coordinates: coords,
+          settings: settings,
+        );
 
         if (!mounted) return;
         await NotificationService.schedulePrayerNotifications(
@@ -370,7 +379,7 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, false),
-                            child: Text("إلغاء",
+                            child: Text(AppStrings.cancel,
                                 style: GoogleFonts.cairo(color: Colors.grey)),
                           ),
                           ElevatedButton(
@@ -378,6 +387,7 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
                                 backgroundColor: primaryDarkGreen),
                             onPressed: () => Navigator.pop(ctx, true),
                             child: Text("متابعة",
+
                                 style: GoogleFonts.cairo(color: Colors.white)),
                           ),
                         ],
@@ -847,10 +857,11 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
                             foregroundColor: c.textSecondary,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 12)),
-                        child: Text("إلغاء",
+                        child: Text(AppStrings.cancel,
                             style: GoogleFonts.cairo(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
+
                       ElevatedButton(
                         onPressed: () async {
                           await settings.setPrayerOffset(

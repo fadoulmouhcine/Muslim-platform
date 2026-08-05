@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'notification_service.dart';
+import 'method_channel_constants.dart'; // ✅ Task 3.5: Centralized channel names
+import '../constants/app_strings.dart';
+
 
 class SilentModeService {
   static const MethodChannel _channel =
-      MethodChannel('com.example.muslim/silent_mode');
+      MethodChannel(MethodChannelNames.silentMode);
 
   static Future<bool> hasDndPermission() async {
     try {
@@ -99,7 +102,8 @@ class SilentModeService {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child:
-                Text("إلغاء", style: GoogleFonts.cairo(color: Colors.white54)),
+                Text(AppStrings.cancel, style: GoogleFonts.cairo(color: Colors.white54)),
+
           ),
           ElevatedButton(
             onPressed: () async {

@@ -7,7 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter/services.dart';
 import 'services/sync_service.dart';
@@ -59,41 +62,118 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 🔒 Task 5.5: All fonts used by the app (Cairo, Amiri, Aref Ruqaa, Outfit,
+  // IBM Plex Mono) are now bundled locally under assets/fonts/google_fonts/.
+  // Disabling runtime HTTP fetching guarantees the app NEVER attempts a
+  // network call for fonts (fully offline-safe) and will simply use the
+  // matching bundled asset instead.
+  GoogleFonts.config.allowRuntimeFetching = false;
+
+  // 🔒 Task 5.5: Register OFL licenses for the Google Fonts bundled locally
+
+  // as assets (assets/fonts/google_fonts/). This keeps Flutter's built-in
+  // "Licenses" page (Settings > About > Licenses) accurate/compliant now
+  // that these fonts ship inside the APK instead of being fetched over HTTP.
+  LicenseRegistry.addLicense(() async* {
+    const licenseFiles = <String>[
+      'assets/fonts/google_fonts/OFL_cairo.txt',
+      'assets/fonts/google_fonts/OFL_amiri.txt',
+      'assets/fonts/google_fonts/OFL_arefruqaa.txt',
+      'assets/fonts/google_fonts/OFL_outfit.txt',
+      'assets/fonts/google_fonts/OFL_ibmplexmono.txt',
+    ];
+    for (final path in licenseFiles) {
+      try {
+        final license = await rootBundle.loadString(path);
+        yield LicenseEntryWithLineBreaks(<String>['google_fonts'], license);
+      } catch (e) {
+        debugPrint("❌ Failed to load font license '$path': $e");
+      }
+    }
+  });
+
   // ✅ Firebase, Analytics & FCM Setup
+
+  // 🛡️ Task 3.2: Each Firebase/FCM sub-step now has its OWN try/catch block
+  // (instead of one giant try/catch wrapping everything). This prevents a
+  // single failure — e.g. getToken() silently failing on devices/emulators
+  // without Google Play Services — from swallowing/skipping the rest of the
+  // Firebase setup (permissions, listeners, etc.) without any visibility.
+
+  // 1. Core Firebase Initialization (must succeed for the rest to run)
+  bool firebaseInitialized = false;
   try {
     await Firebase.initializeApp();
-    FirebaseAnalytics analytics = FirebaseAnalytics.instance;
-    await analytics.logAppOpen();
+    firebaseInitialized = true;
+  } catch (e) {
+    debugPrint("❌ Firebase.initializeApp() error: $e");
+  }
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (firebaseInitialized) {
+    // 2. Analytics: log app open
+    try {
+      final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+      await analytics.logAppOpen();
+    } catch (e) {
+      debugPrint("❌ FirebaseAnalytics.logAppOpen() error: $e");
+    }
 
-    await FirebaseMessaging.instance.requestPermission();
+    // 3. Background message handler registration
+    try {
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint("❌ FCM onBackgroundMessage registration error: $e");
+    }
 
-    await FirebaseMessaging.instance
-        .setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    // 4. Notification permission request
+    try {
+      await FirebaseMessaging.instance.requestPermission();
+    } catch (e) {
+      debugPrint("❌ FCM requestPermission() error: $e");
+    }
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    // 5. Foreground notification presentation options
+    try {
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint(
+          "❌ FCM setForegroundNotificationPresentationOptions() error: $e");
+    }
+
+    // 6. Foreground message listener
+    try {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        if (kDebugMode) {
+          // ignore: avoid_print
+          print('Received: ${message.notification?.title}');
+        }
+        debugPrint(
+            "Received FCM foreground message title: ${message.notification?.title}");
+        debugPrint(
+            "Received FCM foreground message body: ${message.notification?.body}");
+      });
+    } catch (e) {
+      debugPrint("❌ FCM onMessage listener setup error: $e");
+    }
+
+    // 7. FCM Token retrieval — isolated in its own try/catch since this is
+    // the step most prone to silent failure (e.g. missing Google Play
+    // Services on emulators/some devices) and must never block app startup.
+    try {
+      final String? fcmToken = await FirebaseMessaging.instance.getToken();
       if (kDebugMode) {
         // ignore: avoid_print
-        print('Received: ${message.notification?.title}');
+        print("FCM TOKEN: $fcmToken");
       }
-      debugPrint(
-          "Received FCM foreground message title: ${message.notification?.title}");
-      debugPrint(
-          "Received FCM foreground message body: ${message.notification?.body}");
-    });
-
-    String? fcmToken = await FirebaseMessaging.instance.getToken();
-    if (kDebugMode) {
-      // ignore: avoid_print
-      print("FCM TOKEN: $fcmToken");
+    } catch (e) {
+      debugPrint("❌ FirebaseMessaging.getToken() error: $e");
     }
-  } catch (e) {
-    debugPrint("Firebase Messaging setup error: $e");
   }
 
   // ✅ Edge-to-Edge System Navigation & Transparent Status Bar Setup

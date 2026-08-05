@@ -49,8 +49,6 @@ dependencies:
   google_fonts: ^8.1.0
   flutter_compass: ^0.8.1
 
-  quran: ^1.3.3
-  
   geocoding: ^3.0.0
   provider: ^6.1.1
   shared_preferences: ^2.3.2
@@ -104,21 +102,13 @@ flutter:
     - assets/json/Names_Of_Allah.json
     - assets/json/doaa_quran.json
     - assets/json/prophet_doaa.json
-    - assets/json/quran/doaa_khatm.json
     - assets/json/daily_athar.json
     - assets/images/
     - assets/json/quran/
     - assets/json/sunnah/
     - assets/json/tafsir/
-    - assets/json/hadith/
-    - assets/json/quran/hafs.json
-    - assets/json/quran/warsh.json
-    - assets/json/quran/qaloun.json
-    - assets/json/quran/sousi.json
-    - assets/json/quran/douri.json
-    - assets/json/quran/shuba.json
-    - assets/json/tafsir/tafsir.json
     - assets/svg/
+    - assets/fonts/google_fonts/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -3,10 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:adhan/adhan.dart';
+import 'method_channel_constants.dart'; // ✅ Task 3.5: Centralized channel names
 
 class WidgetService {
   static const MethodChannel _channel =
-      MethodChannel('com.example.muslim/widget');
+      MethodChannel(MethodChannelNames.widget);
 
   /// Saves the prayer times to shared cache for the native home/lock widgets
   /// and triggers a background native widget reload.

@@ -8,6 +8,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/settings_provider.dart'; // ✅ H-02
 import '../services/app_colors.dart';
 import '../services/quran_service.dart';
+import '../constants/app_strings.dart';
+
 
 class QuranMemorizationScreen extends StatefulWidget {
   const QuranMemorizationScreen({super.key});
@@ -169,11 +171,12 @@ class _QuranMemorizationScreenState extends State<QuranMemorizationScreen> {
               _loadQuranData();
             },
             icon: const Icon(Icons.refresh_rounded),
-            label: Text("إعادة المحاولة",
+            label: Text(AppStrings.retry,
                 style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC5A059),
                 foregroundColor: Colors.white),
+
           ),
         ],
       ),

@@ -10,6 +10,8 @@ import 'quran_reading_screen.dart';
 import 'quran_search_screen.dart';
 import 'khatm_doaa_screen.dart'; // ✅ Import new screen
 import '../services/app_colors.dart';
+import '../constants/app_strings.dart';
+
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
@@ -466,7 +468,7 @@ class _QuranScreenState extends State<QuranScreen> {
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh_rounded),
-            label: Text("إعادة المحاولة",
+            label: Text(AppStrings.retry,
                 style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryColor, foregroundColor: Colors.white),

@@ -25,7 +25,14 @@ class QuranPage {
 class QuranService {
   static List<dynamic> _allVersesFlat = [];
   // ✅ المرجع ديال حفص ضروري للصوت والتفسير
+  // ✅ Task 4.4: This is no longer eagerly loaded whenever a non-Hafs
+  // Qira'a (Warsh, Qalun, etc.) is active. Instead it is lazy-loaded only
+  // the first time it's actually needed (audio playback / Tafsir lookup)
+  // via `_ensureHafsReference()`, avoiding ~604 pages of extra Quran data
+  // sitting permanently in memory for users who never trigger those
+  // features.
   static List<dynamic> _hafsReferenceVerses = [];
+  static Future<void>? _hafsLoadingFuture;
   static final List<QuranPage> _cachedPages = [];
   static final List<Map<String, dynamic>> _surahsList = [];
   static String? _currentLoadedJsonPath;
@@ -88,17 +95,12 @@ class QuranService {
       _allVersesFlat = await compute(_parseJsonIsolate, jsonString);
       _currentLoadedJsonPath = jsonPath;
 
-      // ✅ 1. تحميل حفص ديما فالخلفية (كمرجع للمقارنة)
-      if (!jsonPath.contains('hafs') && _hafsReferenceVerses.isEmpty) {
-        try {
-          String hafsString =
-              await rootBundle.loadString('assets/json/quran/hafs.json');
-          _hafsReferenceVerses = await compute(_parseJsonIsolate, hafsString);
-          debugPrint("✅ Hafs Reference Loaded (Audio System Ready)");
-        } catch (e) {
-          debugPrint("⚠️ Hafs JSON not found - Audio mapping might fail: $e");
-        }
-      } else if (jsonPath.contains('hafs')) {
+      // ✅ Task 4.4: The Hafs reference is no longer eagerly loaded here.
+      // If the loaded Qira'a IS Hafs, reuse the already-parsed verses as the
+      // reference (no extra memory cost). Otherwise, the reference JSON is
+      // lazy-loaded on-demand later via `_ensureHafsReference()` the first
+      // time audio playback or Tafsir lookup actually needs it.
+      if (jsonPath.contains('hafs')) {
         _hafsReferenceVerses = _allVersesFlat;
       }
 
@@ -250,18 +252,45 @@ class QuranService {
     return index != -1 ? index : 0;
   }
 
+  // ✅ Task 4.4: Lazily loads (and caches) the Hafs reference JSON the very
+  // first time it's actually needed, instead of it being force-loaded
+  // in-memory for the entire app lifetime as soon as any Quran data is
+  // opened. Subsequent calls reuse the same cached in-memory data - no
+  // repeat disk reads.
+  static Future<List<dynamic>> _ensureHafsReference() async {
+    if (_hafsReferenceVerses.isNotEmpty) return _hafsReferenceVerses;
+
+    // Prevent duplicate concurrent loads if multiple callers request it
+    // around the same time (e.g. rapid successive ayah taps).
+    _hafsLoadingFuture ??= () async {
+      try {
+        String hafsString =
+            await rootBundle.loadString('assets/json/quran/hafs.json');
+        _hafsReferenceVerses = await compute(_parseJsonIsolate, hafsString);
+        debugPrint("✅ Hafs Reference Loaded Lazily (Audio/Tafsir Ready)");
+      } catch (e) {
+        debugPrint("⚠️ Hafs JSON not found - Audio mapping might fail: $e");
+      }
+    }();
+
+    await _hafsLoadingFuture;
+    return _hafsReferenceVerses;
+  }
+
   // 🔥🔥🔥 دالة تحويل الرقم للصوت 🔥🔥🔥
-  static int getHafsAyahNumberForTafsir(
-      int surahId, int originalAyahNum, String verseText) {
+  static Future<int> getHafsAyahNumberForTafsir(
+      int surahId, int originalAyahNum, String verseText) async {
+    // ✅ Task 4.4: Lazy-load the Hafs reference on first use.
+    final hafsReferenceVerses = await _ensureHafsReference();
     // إيلا كنا ديجا ف حفص، ماكنحتاجوش تحويل
-    if (_hafsReferenceVerses.isEmpty) return originalAyahNum;
+    if (hafsReferenceVerses.isEmpty) return originalAyahNum;
 
     // نظف النص اللي جاي من (ورش/قالون)
     String cleanOriginal = _normalize(verseText);
 
     // جبد غير آيات السورة المطلوبة من حفص باش نسرعو البحث
     var hafsSurahVerses =
-        _hafsReferenceVerses.where((v) => v['sura_no'] == surahId).toList();
+        hafsReferenceVerses.where((v) => v['sura_no'] == surahId).toList();
 
     for (var hafsVerse in hafsSurahVerses) {
       String cleanHafs = _normalize(hafsVerse['aya_text']);

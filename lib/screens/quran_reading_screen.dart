@@ -15,6 +15,8 @@ import '../services/tafsir_service.dart';
 import '../services/quran_meta_data.dart';
 import '../services/tajweed_service.dart';
 import '../services/quran_audio_service.dart';
+import '../constants/app_strings.dart';
+
 
 class QuranReadingScreen extends StatefulWidget {
   final int initialSurahId;
@@ -326,10 +328,13 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
     );
   }
 
-  void _showTafsir(
-      BuildContext context, int surahId, int ayahNum, String verseText) {
-    int hafsAyahNum =
-        QuranService.getHafsAyahNumberForTafsir(surahId, ayahNum, verseText);
+  // ✅ Task 4.4: Converted to async since `getHafsAyahNumberForTafsir` now
+  // lazily awaits loading the Hafs reference JSON on first use.
+  Future<void> _showTafsir(
+      BuildContext context, int surahId, int ayahNum, String verseText) async {
+    int hafsAyahNum = await QuranService.getHafsAyahNumberForTafsir(
+        surahId, ayahNum, verseText);
+    if (!context.mounted) return;
     String tafsirText = TafsirService.getTafsir(surahId, hafsAyahNum);
 
     // ✅ استعمال replaceDigits لتحويل رقم الآية في التفسير حسب الإعدادات
@@ -628,7 +633,8 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
                   });
                   _ensureDataReady();
                 },
-                child: Text("إعادة المحاولة", style: GoogleFonts.cairo()),
+                child: Text(AppStrings.retry, style: GoogleFonts.cairo()),
+
               )
             ],
           ),

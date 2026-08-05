@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // ✅ ضروري
 import '../services/settings_provider.dart'; // ✅ ضروري
 import '../services/app_colors.dart';
+import '../constants/app_strings.dart';
+
 
 class NamesOfAllahScreen extends StatefulWidget {
   const NamesOfAllahScreen({super.key});
@@ -216,8 +218,9 @@ class _NamesOfAllahScreenState extends State<NamesOfAllahScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: Text("إغلاق",
+                child: Text(AppStrings.close,
                     style: GoogleFonts.cairo(color: Colors.white)),
+
               )
             ],
           ),

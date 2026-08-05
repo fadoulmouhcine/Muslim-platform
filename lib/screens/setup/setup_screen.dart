@@ -7,6 +7,8 @@ import '../../services/settings_provider.dart';
 import '../../services/arabic_plural_helper.dart';
 import '../../services/vibration_service.dart';
 import '../main_screen.dart';
+import '../../constants/app_strings.dart';
+
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
@@ -382,7 +384,8 @@ class _SetupScreenState extends State<SetupScreen> {
               child: Text(
                   isGranted
                       ? "تم منح الصلاحية ✓"
-                      : (isDenied ? "إعادة المحاولة" : "منح الصلاحية"),
+                      : (isDenied ? AppStrings.retry : "منح الصلاحية"),
+
                   style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             ),
           )

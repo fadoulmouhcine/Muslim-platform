@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/settings_provider.dart';
 import '../services/notification_service.dart';
+import '../services/prayer_times_controller.dart';
 import '../services/vibration_service.dart';
 import '../main.dart'; // ✅ Import Global Key
 import 'dashboard_screen.dart';
@@ -38,6 +39,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   String _lastCalculationMethod = '';
 
+  // ✅ Task 4.6: Memory-leak fix — we must keep an explicit reference to
+  // both the `SettingsProvider` instance we attached a listener to AND the
+  // listener callback itself, so we can call `removeListener()` in
+  // `dispose()`. Previously an anonymous closure was passed directly to
+  // `addListener()` with no way to ever detach it, leaking a permanently
+  // subscribed listener (and everything it closes over) for the lifetime
+  // of the `SettingsProvider`, even after this `State` was disposed.
+  SettingsProvider? _settingsListenerTarget;
+  VoidCallback? _settingsListener;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +72,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       debugPrint(
           "🕌 MainScreen received AdhanTriggered for $prayerName -> Reactively rebuilding UI banner!");
       if (_myCoordinates != null && _params != null) {
-        final times = PrayerTimes.today(_myCoordinates!, _params!);
+        final times =
+            PrayerTimesController.computeTimes(_myCoordinates!, _params!);
         setState(() {
           _prayerTimes = times;
         });
@@ -77,7 +89,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _listenToSettingsChanges() {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     _lastCalculationMethod = settings.calculationMethod;
-    settings.addListener(() {
+
+    // ✅ Task 4.6: Store both the target provider and the named listener
+    // callback so they can be detached in `dispose()`.
+    _settingsListenerTarget = settings;
+    _settingsListener = () {
       if (!mounted) return;
       if (settings.calculationMethod != _lastCalculationMethod ||
           settings.madhab !=
@@ -85,16 +101,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         _lastCalculationMethod = settings.calculationMethod;
         debugPrint(
             "⚡ Calculation settings changed -> Reactively recomputing offline prayer times...");
-        final coords = _myCoordinates ?? Coordinates(21.4225, 39.8262);
         final params = settings.getCalculationParameters();
-        final times = PrayerTimes.today(coords, params);
+        // ✅ Task 4.2: Route through the shared PrayerTimesController
+        // instead of duplicating the default-coordinates fallback here.
+        final times = PrayerTimesController.computeTodayTimes(
+          coordinates: _myCoordinates,
+          params: params,
+          settings: settings,
+        );
         setState(() {
           _params = params;
           _prayerTimes = times;
         });
         WidgetService.updateWidgetData(prayerTimes: times, city: _city);
       }
-    });
+    };
+    settings.addListener(_settingsListener!);
   }
 
   // 🔥 Helper: Check for pending notification payload
@@ -138,6 +160,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _adhanSubscription?.cancel();
+    // ✅ Task 4.6: Detach the settings listener we attached in
+    // `_listenToSettingsChanges()` to prevent a memory leak.
+    if (_settingsListener != null) {
+      _settingsListenerTarget?.removeListener(_settingsListener!);
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -155,7 +182,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final coords = _myCoordinates;
       final params = _params;
       if (coords != null && params != null && mounted) {
-        final times = PrayerTimes.today(coords, params);
+        final times = PrayerTimesController.computeTimes(coords, params);
         setState(() {
           _prayerTimes = times;
         });
@@ -201,7 +228,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         if (!mounted) return;
         final settings = Provider.of<SettingsProvider>(context, listen: false);
         _params = settings.getCalculationParameters();
-        final times = PrayerTimes.today(_myCoordinates!, _params!);
+        final times =
+            PrayerTimesController.computeTimes(_myCoordinates!, _params!);
         if (mounted) {
           setState(() {
             _prayerTimes = times;
@@ -367,7 +395,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     // ✅ Fully offline astronomical calculation — instant, deterministic,
     // no network round-trip required.
     final PrayerTimes computedTimes =
-        PrayerTimes.today(_myCoordinates!, _params!);
+        PrayerTimesController.computeTimes(_myCoordinates!, _params!);
 
     if (mounted) {
       setState(() {

@@ -5,6 +5,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart'; // ✅ ضروري
 import '../services/settings_provider.dart'; // ✅ ضروري
 import '../services/sunnah_service.dart';
+import '../constants/app_strings.dart';
+
 
 class SunnahReadingScreen extends StatelessWidget {
   final Chapter chapter;
@@ -206,8 +208,9 @@ class SunnahReadingScreen extends StatelessWidget {
                               color:
                                   isDark ? Colors.white70 : Colors.grey[600]),
                           const SizedBox(width: 8),
-                          Text("نسخ",
+                          Text(AppStrings.copy,
                               style: GoogleFonts.cairo(
+
                                   fontSize: 12,
                                   color: isDark
                                       ? Colors.white70
@@ -238,8 +241,9 @@ class SunnahReadingScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.share, size: 18, color: bookColor),
                           const SizedBox(width: 8),
-                          Text("مشاركة",
+                          Text(AppStrings.share,
                               style: GoogleFonts.cairo(
+
                                   fontSize: 12,
                                   color: bookColor,
                                   fontWeight: FontWeight.bold)),

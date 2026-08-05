@@ -51,7 +51,8 @@ class QuranAudioService {
     try {
       // ✅ 1. تحويل رقم الآية إلى حفص (باش السيرفر يفهمنا)
       // هاد الدالة كاين ف quran_service.dart وغتصلح المشكل د 404
-      int fileAyahNumber = QuranService.getHafsAyahNumberForTafsir(
+      // ✅ Task 4.4: This now awaits the lazy-loaded Hafs reference JSON.
+      int fileAyahNumber = await QuranService.getHafsAyahNumberForTafsir(
           surahNumber, ayahNumber, verseText);
 
       debugPrint(

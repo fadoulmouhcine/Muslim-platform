@@ -6,6 +6,8 @@ import '../../../services/app_colors.dart';
 import '../../../services/quran_service.dart';
 import '../../../services/settings_provider.dart';
 import '../../../services/vibration_service.dart';
+import '../../../constants/app_strings.dart';
+
 
 class QuranSettingsTab extends StatefulWidget {
   const QuranSettingsTab({super.key});
@@ -124,10 +126,11 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
                 if (isError)
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text("إغلاق",
+                    child: Text(AppStrings.close,
                         style: GoogleFonts.cairo(
                             color: Colors.red, fontWeight: FontWeight.bold)),
                   ),
+
               ],
             );
           },

@@ -13,6 +13,7 @@ import '../main.dart'; // ✅ Import for navigatorKey
 import '../screens/daily_harvest_screen.dart'; // ✅ Import DailyHarvestScreen
 import '../screens/quran_reading_screen.dart';
 import 'arabic_plural_helper.dart';
+import 'method_channel_constants.dart'; // ✅ Task 3.5: Centralized channel names
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -20,7 +21,7 @@ class NotificationService {
 
   // 🔗 MethodChannel للتواصل مع Native Android (Foreground Service)
   static const MethodChannel _adhanChannel =
-      MethodChannel('com.example.muslim/adhan');
+      MethodChannel(MethodChannelNames.adhan);
 
   static Future<void> init() async {
     tz.initializeTimeZones();
@@ -93,10 +94,17 @@ class NotificationService {
   static String? pendingPayload;
   static bool _isColdStartFromNotification = false;
 
+  // ✅ Task 3.4: Removed the unconditional `Future.delayed(300ms)` that used
+  // to run on EVERY call (including warm/foreground taps where there's no
+  // "UI frame not ready" concern at all). The delay is no longer needed
+  // because:
+  //   - Cold start: MainScreen already waits for
+  //     `WidgetsBinding.instance.addPostFrameCallback` before calling this,
+  //     which guarantees the first frame has already been rendered.
+  //   - Warm/foreground taps: there is no pending native-side race condition
+  //     to wait out — the payload (if any) is already available synchronously.
+  // This makes navigation feel instant instead of waiting 300ms every time.
   static Future<String?> consumePendingPayload() async {
-    // ⏳ Wait a bit to ensure UI frame is ready
-    await Future.delayed(const Duration(milliseconds: 300));
-
     String? targetPayload = pendingPayload;
 
     // 1. If local is empty, Double-Check Native Side

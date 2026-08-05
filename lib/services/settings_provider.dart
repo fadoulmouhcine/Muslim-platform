@@ -37,6 +37,7 @@ class SettingsProvider with ChangeNotifier {
 
   // --- إعدادات الـ Setup والأهداف ---
   bool _isFirstTime = true;
+  String _userName = "مسلم"; // ✅ Default fallback name
   // ✅ Arabic-only app: locale is fixed and no longer user-configurable.
   static const Locale _appLocale = Locale('ar');
   int _dailyHizbGoal = 1;
@@ -60,6 +61,7 @@ class SettingsProvider with ChangeNotifier {
       'standard'; // 'standard', 'maghrebi', 'levantine'
 
   // --- Getters ---
+  String get userName => _userName;
   double get fontSize => _fontSize;
   bool get isMushafMode => _isMushafMode;
   String get quranType => _quranType;
@@ -492,6 +494,7 @@ class SettingsProvider with ChangeNotifier {
 
     // Setup & Goals
     _isFirstTime = prefs.getBool('isFirstTime') ?? true;
+    _userName = prefs.getString('userName') ?? "مسلم";
 
     _dailyHizbGoal = prefs.getInt('dailyHizbGoal') ?? 1;
 
@@ -519,6 +522,14 @@ class SettingsProvider with ChangeNotifier {
   }
 
   // --- Setters ---
+
+  Future<void> setUserName(String name) async {
+    final cleanName = name.trim();
+    _userName = cleanName.isEmpty ? "مسلم" : cleanName;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userName', _userName);
+    notifyListeners();
+  }
 
   Future<void> setFontSize(double size) async {
     _fontSize = size;

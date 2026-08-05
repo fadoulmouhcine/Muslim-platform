@@ -13,11 +13,24 @@ import '../services/app_colors.dart';
 class MainDrawer extends StatelessWidget {
   const MainDrawer({super.key});
 
+  static const List<String> _dynamicGreetings = [
+    "اجعل لسانك رطباً بذكر الله",
+    "صلوا على من بكى شوقاً لرؤيتنا",
+    "ألا بذكر الله تطمئن القلوب",
+    "وما توفيقي إلا بالله",
+    "فَاذْكُرُونِي أَذْكُرْكُمْ",
+    "وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ",
+    "سبحان الله وبحمده، سبحان الله العظيم",
+  ];
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
     final c = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Pick a random greeting
+    final String randomGreeting = (List.of(_dynamicGreetings)..shuffle()).first;
 
     return Theme(
       data: Theme.of(context).copyWith(
@@ -94,7 +107,7 @@ class MainDrawer extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "أهلاً بك يا مسلم",
+                                "أهلاً بك يا ${settings.userName}",
                                 style: GoogleFonts.cairo(
                                   color: Colors.white,
                                   fontSize: 20,
@@ -104,7 +117,7 @@ class MainDrawer extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                "اجعل لسانك رطباً بذكر الله",
+                                randomGreeting,
                                 style: GoogleFonts.cairo(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 12,

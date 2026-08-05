@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; // For blur effects
 import '../../services/settings_provider.dart';
@@ -22,9 +23,11 @@ enum _LocationStepState { idle, requesting, granted, denied }
 class _SetupScreenState extends State<SetupScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 4;
+  static const int _totalPages = 5;
 
   _LocationStepState _locationState = _LocationStepState.idle;
+  String? _resolvedCity;
+  final TextEditingController _nameController = TextEditingController();
 
   // ألوان البريميوم
   final Color _bgDark = const Color(0xFF0B1016);
@@ -33,6 +36,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -123,6 +127,10 @@ class _SetupScreenState extends State<SetupScreen> {
                       _AnimatedSetupPage(
                         pageKey: 'numerals',
                         child: _buildLanguagePage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'name',
+                        child: _buildNamePage(settings),
                       ),
                       _AnimatedSetupPage(
                         pageKey: 'location',
@@ -255,6 +263,51 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
+  Widget _buildNamePage(SettingsProvider settings) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text("نتشرف بمعرفتك",
+              style: GoogleFonts.cairo(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  height: 1.2)),
+          const SizedBox(height: 10),
+          Text("كيف تحب أن نناديك؟",
+              style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
+          const SizedBox(height: 40),
+          TextField(
+            controller: _nameController,
+            style: GoogleFonts.cairo(color: Colors.white, fontSize: 18),
+            decoration: InputDecoration(
+              hintText: "مثال: محسن",
+              hintStyle: GoogleFonts.cairo(color: Colors.white24, fontSize: 18),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _primary),
+              ),
+              prefixIcon: Icon(Icons.person_outline_rounded, color: _primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _selectNumberType(SettingsProvider settings, String type) {
     VibrationService.triggerHaptic(settings, type: HapticType.selection);
     settings.setNumberType(type);
@@ -307,7 +360,9 @@ class _SetupScreenState extends State<SetupScreen> {
           const SizedBox(height: 15),
           Text(
               isGranted
-                  ? "تم منح صلاحية الموقع بنجاح! سنحسب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك."
+                  ? (_resolvedCity != null
+                      ? "يسعدنا تواجدك معنا في مدينة $_resolvedCity، سنقوم بحساب مواقيت الصلاة واتجاه القبلة بدقة لأجلك"
+                      : "تم منح صلاحية الموقع بنجاح! سنحسب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك.")
                   : "نحتاج إلى تفعيل الموقع لحساب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك — تُحسب بالكامل بدون إنترنت.",
               textAlign: TextAlign.center,
               style: GoogleFonts.cairo(
@@ -365,10 +420,42 @@ class _SetupScreenState extends State<SetupScreen> {
                             : _LocationStepState.denied;
                       });
                       if (granted) {
+                        try {
+                          Position position = await Geolocator.getCurrentPosition(
+                            locationSettings: const LocationSettings(
+                              accuracy: LocationAccuracy.low,
+                              timeLimit: Duration(seconds: 5),
+                            ),
+                          );
+                          await setLocaleIdentifier('ar');
+                          List<Placemark> placemarks =
+                              await placemarkFromCoordinates(position.latitude, position.longitude)
+                                  .timeout(const Duration(seconds: 3));
+                          if (placemarks.isNotEmpty) {
+                            final p = placemarks.first;
+                            String? extractedCity = p.locality;
+                            if (extractedCity == null || extractedCity.trim().isEmpty) {
+                              extractedCity = p.subAdministrativeArea;
+                            }
+                            if (extractedCity == null || extractedCity.trim().isEmpty) {
+                              extractedCity = p.administrativeArea;
+                            }
+                            if (extractedCity != null && extractedCity.trim().isNotEmpty) {
+                              if (mounted) {
+                                setState(() {
+                                  _resolvedCity = extractedCity!.trim();
+                                });
+                              }
+                            }
+                          }
+                        } catch (_) {
+                          // Ignore geocoding failure during setup, will fallback gracefully
+                        }
+
                         VibrationService.triggerHaptic(settings,
                             type: HapticType.medium);
                         await Future.delayed(
-                            const Duration(milliseconds: 500));
+                            const Duration(milliseconds: 1500));
                         if (mounted) _goToPage(_currentPage + 1);
                       }
                     },
@@ -586,6 +673,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
   void _finishSetup() async {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
+    if (_nameController.text.trim().isNotEmpty) {
+      await settings.setUserName(_nameController.text.trim());
+    }
     await settings.completeSetup();
     if (mounted) {
       Navigator.pushReplacement(

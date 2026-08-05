@@ -49,10 +49,21 @@ object AlarmScheduler {
         }
         
         try {
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(timeInMillis, pendingIntent),
-                pendingIntent
-            )
+            // setExactAndAllowWhileIdle fires reliably through Doze without a showIntent
+            // that could auto-launch the app on OEM ROMs (Samsung, Xiaomi, etc.)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    timeInMillis,
+                    pendingIntent
+                )
+            }
             Log.d("AlarmScheduler", "✅ Alarm Scheduled: $prayerName (Reminder: $isReminder) at $timeInMillis")
         } catch (e: SecurityException) {
             Log.e("AlarmScheduler", "❌ SecurityException while scheduling alarm: ${e.message}")

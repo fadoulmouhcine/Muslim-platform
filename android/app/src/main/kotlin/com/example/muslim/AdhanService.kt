@@ -124,7 +124,7 @@ class AdhanService : Service() {
         // 2️⃣ Acquire Wake Lock (باش يبقى الجهاز صاحي)
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            PowerManager.PARTIAL_WAKE_LOCK, // No ACQUIRE_CAUSES_WAKEUP — keeps CPU alive without forcing screen on
             "MuslimApp::AdhanWakeLock"
         )
         wakeLock?.acquire(5 * 60 * 1000L) // 5 دقائق max
@@ -230,10 +230,10 @@ class AdhanService : Service() {
             .setContentTitle(currentTitle)
             .setContentText(displayBody)
             .setSmallIcon(getNotificationIcon())
-            .setOngoing(false) // Allows manual swipe dismiss if desired, but prevents auto-dismissal upon tapping/opening the app
+            .setOngoing(false)
             .setAutoCancel(false)
-            .setContentIntent(pendingIntent)
-            .setFullScreenIntent(pendingIntent, true) // 🔥 Displays heads-up banner visually on lock/unlocked screens
+            .setContentIntent(pendingIntent) // User can still TAP to open app
+            // setFullScreenIntent removed — was auto-launching app without user tap
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

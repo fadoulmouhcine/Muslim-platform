@@ -1,8 +1,8 @@
 name: muslim
-description: "A new Flutter project."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+description: "Muslim Platform — An authentic, privacy-first Islamic companion app for Android."
+homepage: https://fadoulmouhcine.github.io/muslim-platform
+# This package is private (not published to pub.dev).
+publish_to: 'none'
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -35,23 +35,20 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  # ZIDNA HADI (Fix mochkil d Logha)
   flutter_localizations:
     sdk: flutter
 
-  # Packages Dyalna
+  # App dependencies
   adhan: ^2.0.0+1
   firebase_core: ^4.13.0
   firebase_analytics: ^12.4.6
   geolocator: ^14.0.3
-  
-  # FIX: Tlla3nah l 0.20.2 bach y-twafaq m3a flutter_localizations
+
   intl: ^0.20.2
   
   google_fonts: ^8.1.0
   flutter_compass: ^0.8.1
-  
-  # FIX: Habbetnah l 1.3.3 bach y-khdem m3a flutter_lints bla machakil
+
   quran: ^1.3.3
   
   geocoding: ^3.0.0

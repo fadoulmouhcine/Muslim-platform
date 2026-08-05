@@ -1,4 +1,11 @@
+// Copyright (c) 2026-present Mouhcine Fadoul. All rights reserved.
+// Application: Muslim Platform — All Rights Reserved
+// Author: Mouhcine Fadoul
+
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:workmanager/workmanager.dart';
@@ -13,6 +20,8 @@ import 'services/quran_service.dart';
 import 'services/settings_provider.dart';
 import 'services/tafsir_service.dart';
 import 'services/notification_service.dart';
+import 'services/official_prayer_times_service.dart';
+
 
 // Screens
 import 'screens/main_screen.dart';
@@ -69,8 +78,10 @@ void main() async {
     );
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // ignore: avoid_print
-      print('Received: ${message.notification?.title}');
+      if (kDebugMode) {
+        // ignore: avoid_print
+        print('Received: ${message.notification?.title}');
+      }
       debugPrint(
           "Received FCM foreground message title: ${message.notification?.title}");
       debugPrint(
@@ -78,8 +89,10 @@ void main() async {
     });
 
     String? fcmToken = await FirebaseMessaging.instance.getToken();
-    // ignore: avoid_print
-    print("FCM TOKEN: $fcmToken");
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print("FCM TOKEN: $fcmToken");
+    }
   } catch (e) {
     debugPrint("Firebase Messaging setup error: $e");
   }
@@ -132,7 +145,14 @@ void main() async {
 
   await TafsirService.loadTafsir();
 
+  // 🧹 STORAGE BLOAT FIX: Prune outdated cached prayer-time entries
+  // (older than 2 months) on every app launch so SharedPreferences storage
+  // doesn't grow unbounded over time. This is a cheap, fire-and-forget
+  // operation and never blocks app startup.
+  unawaited(OfficialPrayerTimesService.pruneOldCache());
+
   final settingsProvider = SettingsProvider();
+
   await settingsProvider.loadSettings();
   await QuranService.loadQuran(settingsProvider.currentJsonPath);
 
@@ -179,12 +199,12 @@ class MuslimApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // ✅ التطبيق يدعم اللغة العربية فقط (Arabic-only application)
       supportedLocales: const [
         Locale('ar', 'AE'),
-        Locale('en', 'US'),
       ],
-      // ✅ اللغة كتجي دابا من Settings
-      locale: settings.appLocale,
+      locale: const Locale('ar', 'AE'),
+
 
       // ✅ اللوجيك: إيلا كان جديد -> Setup, إيلا قديم -> Main
       home: settings.isFirstTime ? const SetupScreen() : const MainScreen(),

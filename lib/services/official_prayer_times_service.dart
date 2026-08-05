@@ -85,6 +85,55 @@ class OfficialPrayerTimesService {
     }
   }
 
+  /// 🧹 Automatic cache pruning: removes cached monthly prayer-time entries
+  /// that are older than [monthsToKeep] months. Without this, every unique
+  /// combination of (year, month, rounded GPS coordinates, method) that a
+  /// user has ever triggered stays in `SharedPreferences` forever — across
+  /// months, calculation method changes, and slightly different GPS fixes —
+  /// leading to unbounded local storage growth over time.
+  ///
+  /// Safe to call frequently (e.g. once per app launch); it is a cheap
+  /// no-op once old entries have already been pruned.
+  static Future<void> pruneOldCache({int monthsToKeep = 2}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      // DateTime normalizes negative months correctly (e.g. month -1 rolls
+      // back into the previous year), so this is safe year-round.
+      final cutoff = DateTime(now.year, now.month - monthsToKeep, 1);
+
+      final keysToRemove = <String>[];
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith("official_prayers_")) continue;
+
+        // Key format: official_prayers_{year}_{month}_{latGrid}_{lngGrid}_{methodKey}
+        final parts = key.split('_');
+        if (parts.length < 4) continue;
+
+        final year = int.tryParse(parts[2]);
+        final month = int.tryParse(parts[3]);
+        if (year == null || month == null) continue;
+
+        final entryDate = DateTime(year, month, 1);
+        if (entryDate.isBefore(cutoff)) {
+          keysToRemove.add(key);
+        }
+      }
+
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+
+      if (keysToRemove.isNotEmpty) {
+        debugPrint(
+            "🧹 Pruned ${keysToRemove.length} outdated official prayer-time cache entries (older than $monthsToKeep months).");
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error pruning official prayer times cache: $e");
+    }
+  }
+
+
   /// Get cache key for a specific month and location
   static String _getCacheKey(
       int year, int month, double lat, double lng, String methodKey) {

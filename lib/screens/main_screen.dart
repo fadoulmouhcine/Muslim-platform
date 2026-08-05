@@ -340,20 +340,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     _myCoordinates = Coordinates(position.latitude, position.longitude);
 
-    String lang = 'ar';
-    String fallbackCity = "موقعي";
-    if (mounted) {
-      try {
-        final settings = Provider.of<SettingsProvider>(context, listen: false);
-        lang = settings.currentLanguage;
-        fallbackCity = lang == 'en' ? "My Location" : "موقعي";
-      } catch (e) {
-        debugPrint("Error reading SettingsProvider: $e");
-      }
-    }
+    const String lang = 'ar';
+    const String fallbackCity = "موقعي";
 
     String newCity = fallbackCity;
     String? countryCode;
+
     bool isGpsSource = false;
 
     try {

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:adhan/adhan.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,9 @@ import '../services/notification_service.dart';
 import '../services/prayer_time_service.dart';
 import '../services/app_colors.dart';
 import '../services/official_prayer_times_service.dart';
+import '../services/app_clock_service.dart';
 import 'settings_screen.dart';
+
 
 class PrayerTimesScreen extends StatefulWidget {
   final PrayerTimes? prayerTimes;
@@ -24,46 +25,45 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     with WidgetsBindingObserver {
   PrayerTimes? _activePrayerTimes;
   String _lastCalculationMethod = '';
-  Timer? _tickerTimer;
+  // ✅ UX FIX: Tracks whether a background refresh (e.g. after changing the
+  // calculation method or returning from Settings) is in progress, so we can
+  // show subtle loading feedback instead of leaving the user without any
+  // indication that data is being updated.
+  bool _isRefreshing = false;
 
+
+  // ✅ PERF/BATTERY FIX: This screen previously ran its own independent
+  // `Timer.periodic(seconds: 1)` purely to force a `setState()` rebuild
+  // every second for the live countdown display. It now listens to the
+  // single shared `AppClockService` clock instead — removing one of the
+  // several duplicate concurrent 1-second timers that used to run at once
+  // when this screen was open alongside the dashboard.
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _activePrayerTimes = widget.prayerTimes;
-    _startTicker();
+    AppClockService.instance.now.addListener(_onTick);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopTicker();
+    AppClockService.instance.now.removeListener(_onTick);
     super.dispose();
+  }
+
+  void _onTick() {
+    if (mounted) setState(() {});
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startTicker();
       _refreshPrayerTimes();
-    } else if (state == AppLifecycleState.paused) {
-      _stopTicker();
     }
   }
 
-  void _startTicker() {
-    _stopTicker();
-    _tickerTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
-  void _stopTicker() {
-    _tickerTimer?.cancel();
-    _tickerTimer = null;
-  }
 
   @override
   void didChangeDependencies() {
@@ -76,29 +76,58 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
   }
 
   Future<void> _refreshPrayerTimes() async {
+    if (mounted) {
+      setState(() {
+        _isRefreshing = true;
+      });
+    }
+
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     final coords = _activePrayerTimes?.coordinates ??
         widget.prayerTimes?.coordinates ??
         Coordinates(21.4225, 39.8262);
 
-    final officialTimes =
-        await OfficialPrayerTimesService.getOfficialPrayerTimes(
-      date: DateTime.now(),
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      methodKey: settings.calculationMethod,
-    );
+    try {
+      final officialTimes =
+          await OfficialPrayerTimesService.getOfficialPrayerTimes(
+        date: DateTime.now(),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        methodKey: settings.calculationMethod,
+      );
 
-    if (mounted) {
-      setState(() {
-        _activePrayerTimes = officialTimes ??
-            PrayerTimes.today(
-              coords,
-              settings.getCalculationParameters(),
-            );
-      });
+      if (mounted) {
+        setState(() {
+          _activePrayerTimes = officialTimes ??
+              PrayerTimes.today(
+                coords,
+                settings.getCalculationParameters(),
+              );
+        });
+      }
+    } catch (e) {
+      // ✅ BUG FIX: Previously a failed refresh (e.g. network/DB error) would
+      // silently leave the UI on stale/no data with zero feedback. We now
+      // fall back to locally computed prayer times so the screen never goes
+      // blank, and log the error for diagnostics.
+      debugPrint("⚠️ _refreshPrayerTimes failed: $e");
+      if (mounted) {
+        setState(() {
+          _activePrayerTimes ??= PrayerTimes.today(
+            coords,
+            settings.getCalculationParameters(),
+          );
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +178,19 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
               child: Column(
                 children: [
                   _buildHeader(context, settings, effectiveTimes),
+                  // ✅ UX FIX: Subtle loading indicator so refreshing prayer
+                  // times after a settings change never looks frozen/blank.
+                  if (_isRefreshing)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        color: Color(0xFFC5A059),
+                        backgroundColor: Colors.transparent,
+                      ),
+                    ),
                   const SizedBox(height: 8),
+
                   _buildNextPrayerCard(next, effectiveTimes, settings, context),
                   const SizedBox(height: 16),
                   Expanded(

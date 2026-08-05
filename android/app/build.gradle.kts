@@ -59,7 +59,7 @@ kotlin {
     }
 
     defaultConfig {
-        applicationId = "com.example.muslim"
+        applicationId = "com.fadoul.muslimplatform"
         minSdk = flutter.minSdkVersion
         
         // ✅ 3. Target SDK
@@ -76,8 +76,12 @@ kotlin {
             } else {
                 signingConfigs.getByName("debug")
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         debug {
             isMinifyEnabled = false

@@ -89,7 +89,99 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        _buildAboutSection(),
       ],
+    );
+  }
+
+  Widget _buildAboutSection() {
+    final c = AppColors.of(context);
+    final currentYear = DateTime.now().year;
+    final legalese =
+        'Copyright \u00a9 2026\u2013$currentYear Mouhcine Fadoul.\nAll rights reserved.';
+
+    return GestureDetector(
+      onTap: () {
+        showAboutDialog(
+          context: context,
+          applicationName: 'Muslim Platform',
+          applicationVersion: '1.0.0',
+          applicationIcon: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B5E20),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Text(
+                '\u262a',
+                style: TextStyle(fontSize: 28, color: Colors.white),
+              ),
+            ),
+          ),
+          applicationLegalese: legalese,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'تم تطوير هذا التطبيق بواسطة Mouhcine Fadoul. '
+              'جميع البيانات تُعالج محلياً على جهازك دون مشاركة مع أي طرف خارجي.',
+              style: GoogleFonts.cairo(fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: c.mutedBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B5E20).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: Color(0xFF1B5E20),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'حول التطبيق',
+                    style: GoogleFonts.cairo(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: c.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    'Muslim Platform \u00a9 2026\u2013$currentYear Mouhcine Fadoul',
+                    style: GoogleFonts.cairo(
+                      fontSize: 11,
+                      color: c.textSubtle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: c.textSubtle),
+          ],
+        ),
+      ),
     );
   }
 

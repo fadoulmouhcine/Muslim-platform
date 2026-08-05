@@ -38,8 +38,10 @@ class SettingsProvider with ChangeNotifier {
 
   // --- إعدادات الـ Setup والأهداف ---
   bool _isFirstTime = true;
-  Locale _appLocale = const Locale('ar');
+  // ✅ Arabic-only app: locale is fixed and no longer user-configurable.
+  static const Locale _appLocale = Locale('ar');
   int _dailyHizbGoal = 1;
+
   int _dailyTasbihGoal = 100;
   bool _remindAdhkarSabah = true;
   bool _remindAdhkarMasaa = true;
@@ -233,8 +235,10 @@ class SettingsProvider with ChangeNotifier {
   int get preFajrMinutes => _preFajrAlarmMinutes ?? 0;
 
   bool get isFirstTime => _isFirstTime;
+  // ✅ Arabic-only app: always returns the fixed Arabic locale.
   Locale get appLocale => _appLocale;
   String get currentLanguage => _appLocale.languageCode;
+
   int get dailyHizbGoal => _dailyHizbGoal;
   int get dailyTasbihGoal => _dailyTasbihGoal;
   bool get remindAdhkarSabah => _remindAdhkarSabah;
@@ -430,12 +434,8 @@ class SettingsProvider with ChangeNotifier {
     // Setup & Goals
     _isFirstTime = prefs.getBool('isFirstTime') ?? true;
 
-    String? langCode = prefs.getString('languageCode');
-    if (langCode != null) {
-      _appLocale = Locale(langCode);
-    }
-
     _dailyHizbGoal = prefs.getInt('dailyHizbGoal') ?? 1;
+
     _dailyTasbihGoal = prefs.getInt('dailyTasbihGoal') ?? 100;
     _remindAdhkarSabah = prefs.getBool('remindAdhkarSabah') ?? true;
     _remindAdhkarMasaa = prefs.getBool('remindAdhkarMasaa') ?? true;
@@ -847,12 +847,6 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setLanguage(String code) async {
-    _appLocale = Locale(code);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('languageCode', code);
-    notifyListeners();
-  }
 
   Future<void> updateGoals(
       {int? hizb, int? tasbih, bool? sabah, bool? masaa}) async {

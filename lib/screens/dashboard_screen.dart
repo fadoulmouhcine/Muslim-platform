@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:adhan/adhan.dart';
@@ -8,6 +7,7 @@ import 'package:provider/provider.dart';
 // Services
 import '../services/settings_provider.dart';
 import '../services/silent_mode_service.dart';
+import '../services/app_clock_service.dart';
 
 // Screens
 import 'friday_hub_screen.dart';
@@ -46,31 +46,24 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  late Timer _timer;
-  late ValueNotifier<DateTime> _timeNotifier;
+  // ✅ PERF/BATTERY FIX: Previously this screen spun up its own independent
+  // `Timer.periodic(seconds: 1)` to drive the live prayer countdown. Now it
+  // subscribes to the single app-wide `AppClockService.instance.now` shared
+  // clock instead — eliminating a duplicate concurrent ticking timer when
+  // this screen and others (e.g. PrayerTimesScreen) are mounted at once,
+  // and automatically pausing while the app is backgrounded.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
-    _timeNotifier = ValueNotifier(DateTime.now());
-    _startClock();
     // ✅ DND LIFECYCLE: Listen for app foreground resume to re-validate permission.
     WidgetsBinding.instance.addObserver(this);
-  }
-
-  void _startClock() {
-    // Isolated Time State: ValueNotifier prevents full-tree rebuilds
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) _timeNotifier.value = DateTime.now();
-    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timer.cancel();
-    _timeNotifier.dispose();
     super.dispose();
   }
 
@@ -145,7 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           child: HeroPrayerCard(
                             prayerTimes: widget.prayerTimes,
                             city: widget.city,
-                            timeNotifier: _timeNotifier,
+                            timeNotifier: AppClockService.instance.now,
                             settings: settings,
                             onRetryLocation: widget.onRetryLocation,
                             coordinates: widget.coordinates,
@@ -397,93 +390,6 @@ class _FridayHomeBanner extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActivePrayerMessageTicker extends StatefulWidget {
-  final String message1;
-  final String message2;
-
-  const _ActivePrayerMessageTicker({
-    required this.message1,
-    required this.message2,
-  });
-
-  @override
-  State<_ActivePrayerMessageTicker> createState() =>
-      _ActivePrayerMessageTickerState();
-}
-
-class _ActivePrayerMessageTickerState
-    extends State<_ActivePrayerMessageTicker> {
-  late Timer _timer;
-  int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted) {
-        setState(() {
-          _currentIndex = (_currentIndex + 1) % 2;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = [widget.message1, widget.message2];
-
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC5A059).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFC5A059).withValues(alpha: 0.25),
-          width: 0.8,
-        ),
-      ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          final inAnimation = Tween<Offset>(
-            begin: const Offset(0.0, 0.8),
-            end: Offset.zero,
-          ).animate(animation);
-
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: inAnimation,
-              child: child,
-            ),
-          );
-        },
-        child: Align(
-          alignment: Alignment.centerRight,
-          key: ValueKey<int>(_currentIndex),
-          child: Text(
-            messages[_currentIndex],
-            style: GoogleFonts.cairo(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

@@ -100,7 +100,6 @@ class HeroPrayerCard extends StatelessWidget {
   Widget _buildOfflineOrSyncingCard(BuildContext context, AppColors c) {
     final bool isSyncing = city == "جاري تحديد الموقع..." ||
         city == "جاري تحديث المواقيت تلقائياً...";
-    final bool isEn = settings.currentLanguage == 'en';
 
     return Container(
       key: const ValueKey('offline_banner'),
@@ -138,9 +137,8 @@ class HeroPrayerCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    isEn
-                        ? "Updating prayer times automatically..."
-                        : "جاري تحديث المواقيت تلقائياً...",
+                    "جاري تحديث المواقيت تلقائياً...",
+
                     style: GoogleFonts.cairo(
                       color: _kGoldAccent,
                       fontSize: 13,
@@ -150,9 +148,8 @@ class HeroPrayerCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isEn
-                        ? "Fetching location and calculation parameters"
-                        : "جاري جلب إحداثيات الموقع وإعدادات الحساب",
+                    "جاري جلب إحداثيات الموقع وإعدادات الحساب",
+
                     style: GoogleFonts.cairo(
                       color: Colors.white70,
                       fontSize: 11,
@@ -169,9 +166,8 @@ class HeroPrayerCard extends StatelessWidget {
                       color: _kGoldAccent, size: 24),
                   const SizedBox(height: 6),
                   Text(
-                    isEn
-                        ? "Please check your internet connection and try again"
-                        : "يرجى التحقق من اتصالك بالإنترنت وإعادة المحاولة",
+                    "يرجى التحقق من اتصالك بالإنترنت وإعادة المحاولة",
+
                     style:
                         GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
                     textAlign: TextAlign.center,
@@ -182,7 +178,8 @@ class HeroPrayerCard extends StatelessWidget {
                     icon: const Icon(Icons.refresh_rounded,
                         color: _kGoldAccent, size: 16),
                     label: Text(
-                      isEn ? "Retry" : "إعادة المحاولة",
+                      "إعادة المحاولة",
+
                       style: GoogleFonts.cairo(
                           color: _kGoldAccent,
                           fontSize: 12,

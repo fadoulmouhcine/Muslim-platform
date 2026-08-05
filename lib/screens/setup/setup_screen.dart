@@ -177,30 +177,11 @@ class _SetupScreenState extends State<SetupScreen> {
                   color: Colors.white,
                   height: 1.2)),
           const SizedBox(height: 10),
-          Text("اختر لغة التطبيق وشكل الأرقام المفضل لديك.",
+          Text("اختر شكل الأرقام المفضل لديك في التطبيق.",
               style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
           const SizedBox(height: 50),
-          Text("اللغة / Language",
-              style: GoogleFonts.cairo(
-                  color: _primary, fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                  child: _buildOptionItem(
-                      "العربية",
-                      settings.appLocale.languageCode == 'ar',
-                      () => settings.setLanguage('ar'))),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _buildOptionItem(
-                      "English",
-                      settings.appLocale.languageCode == 'en',
-                      () => settings.setLanguage('en'))),
-            ],
-          ),
-          const SizedBox(height: 30),
-          Text("الأرقام / Numbers",
+          Text("الأرقام",
+
               style: GoogleFonts.cairo(
                   color: _primary, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),

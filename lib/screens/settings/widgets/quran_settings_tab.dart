@@ -359,7 +359,6 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
         ),
         const SizedBox(height: 16),
 
-        // ✅ Live Font Preview Card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -376,20 +375,36 @@ class _QuranSettingsTabState extends State<QuranSettingsTab> {
               Text("معاينة الخط",
                   style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 8),
-              Text(
-                "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
-                textAlign: TextAlign.center,
-                style: settings.currentFontFamily == 'Amiri'
-                    ? GoogleFonts.amiri(
-                        fontSize: settings.fontSize,
-                        color: c.textPrimary,
-                      )
-                    : TextStyle(
-                        fontFamily: settings.currentFontFamily,
-                        fontSize: settings.fontSize,
-                        color: c.textPrimary,
-                      ),
-              ),
+              Builder(builder: (context) {
+                // Canonical preview text (Basmala with full diacritics).
+                const rawPreview =
+                    "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+                final isSimpleMode = settings.quranFontStyleIndex == 2;
+                final previewText = isSimpleMode
+                    ? rawPreview
+                        .replaceAll(RegExp(
+                            r'[\u06D6-\u06DC\u06DF-\u06E4\u06E5-\u06E8\u06EA-\u06ED\u0615\u0670\u200C-\u200F\u0600-\u0605]'),
+                            '')
+                    : rawPreview;
+                // Amiri for index 1 (Naskh) and index 2 (Simple).
+                final useAmiri = settings.quranFontStyleIndex == 1 ||
+                    settings.quranFontStyleIndex == 2;
+                return Text(
+                  previewText,
+                  textAlign: TextAlign.center,
+                  style: useAmiri
+                      ? GoogleFonts.amiri(
+                          fontSize: settings.fontSize,
+                          color: c.textPrimary,
+                          height: isSimpleMode ? 2.0 : 1.8,
+                        )
+                      : TextStyle(
+                          fontFamily: settings.currentFontFamily,
+                          fontSize: settings.fontSize,
+                          color: c.textPrimary,
+                        ),
+                );
+              }),
             ],
           ),
         ),

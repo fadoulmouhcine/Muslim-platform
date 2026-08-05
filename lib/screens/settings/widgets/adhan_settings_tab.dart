@@ -863,29 +863,42 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
                       ),
 
                       ElevatedButton(
-                        onPressed: () async {
-                          await settings.setPrayerOffset(
-                              prayerKey, localOffset);
-                          await NotificationService
-                              .rescheduleNotificationsFromBackground();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  localOffset == 0
-                                      ? "تم إيقاف التنبيه المسبق لصلاة $title"
-                                      : "تم ضبط التنبيه المسبق لصلاة $title (قبل $localOffset دقيقة)",
-                                  style: GoogleFonts.cairo(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
-                              backgroundColor: const Color(0xFF003527),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              margin: const EdgeInsets.all(20),
-                              duration: const Duration(seconds: 2),
-                            ));
-                            Navigator.pop(context);
-                          }
+                        onPressed: () {
+                          // 1️⃣ Dismiss the sheet INSTANTLY — no awaiting.
+                          Navigator.pop(context);
+
+                          // 2️⃣ Save + reschedule off the UI thread (fire-and-forget).
+                          // Captured locals (prayerKey, localOffset, title) are safe
+                          // to close over because they are plain value types.
+                          unawaited(
+                            settings
+                                .setPrayerOffset(prayerKey, localOffset)
+                                .then((_) =>
+                                    NotificationService
+                                        .rescheduleNotificationsFromBackground())
+                                .then((_) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(this.context)
+                                  .showSnackBar(SnackBar(
+                                content: Text(
+                                    localOffset == 0
+                                        ? "تم إيقاف التنبيه المسبق لصلاة $title"
+                                        : "تم ضبط التنبيه المسبق لصلاة $title (قبل $localOffset دقيقة)",
+                                    style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold)),
+                                backgroundColor: const Color(0xFF003527),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                margin: const EdgeInsets.all(20),
+                                duration: const Duration(seconds: 2),
+                              ));
+                            }).catchError((e) {
+                              debugPrint(
+                                  "⚠️ Offset save/reschedule failed: $e");
+                            }),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFC9A96E),

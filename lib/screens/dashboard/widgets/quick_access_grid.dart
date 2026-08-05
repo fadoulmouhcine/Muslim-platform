@@ -8,6 +8,7 @@ import '../../hijri_calendar_screen.dart';
 import '../../names_of_allah_screen.dart';
 import '../../prophet_doaa_screen.dart';
 import '../../qibla_screen.dart';
+import '../../daily_harvest_screen.dart';
 import '../../tasbih_screen.dart';
 
 const Color _kPrimaryGreen = Color(0xFF1A3626);
@@ -93,6 +94,15 @@ class QuickAccessGrid extends StatelessWidget {
         }, "qibla_hero"),
         _ActionItem(
             "القرآن\nالكريم", Icons.menu_book_rounded, () => onTabChange(2)),
+        _ActionItem("حصاد\nاليوم", Icons.track_changes_rounded, () {
+          Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const DailyHarvestScreen(),
+                transitionsBuilder: (_, a, __, c) =>
+                    FadeTransition(opacity: a, child: c),
+              ));
+        }),
       ],
     );
   }

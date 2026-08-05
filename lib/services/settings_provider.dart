@@ -282,8 +282,11 @@ class SettingsProvider with ChangeNotifier {
     if (_quranFontStyleIndex == 1) {
       return GoogleFonts.amiri().fontFamily ?? 'Amiri';
     }
+    // index 2 = "القرآن البسيط": Amiri is the correct typeface for clean Quran
+    // reading — it handles stacked harakāt without metric collisions.
+    // The reading screen further strips annotation marks for this mode.
     if (_quranFontStyleIndex == 2) {
-      return GoogleFonts.cairo().fontFamily ?? 'Cairo';
+      return GoogleFonts.amiri().fontFamily ?? 'Amiri';
     }
     if (_quranType == 'warsh') return 'Warsh';
     if (_quranType == 'qaloun') return 'Qaloun';

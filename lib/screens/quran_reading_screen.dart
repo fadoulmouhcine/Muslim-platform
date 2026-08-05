@@ -15,7 +15,9 @@ import '../services/tafsir_service.dart';
 import '../services/quran_meta_data.dart';
 import '../services/tajweed_service.dart';
 import '../services/quran_audio_service.dart';
+import '../services/quran_asset_cache.dart';
 import '../constants/app_strings.dart';
+
 
 
 class QuranReadingScreen extends StatefulWidget {
@@ -83,9 +85,23 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
         CurvedAnimation(parent: _animController, curve: Curves.easeInOut));
 
     _ensureDataReady();
+
+    // ✅ Performance Fix: Defensive/redundant pre-cache trigger. This is a
+    // cheap no-op if `MainScreen` already warmed the Surah header ornament
+    // SVG + Bismillah PNG on app startup (the common case). It only does
+    // real work the first time the Quran reader is opened via a route that
+    // bypassed `MainScreen` (e.g. a deep link straight into this screen),
+    // guaranteeing the assets are still decoded ahead of the first paint
+    // instead of on it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        QuranAssetCache.precache(context);
+      }
+    });
   }
 
   Future<void> _ensureDataReady() async {
+
     try {
       final b = await StorageService.getBookmark();
       if (b != null && b['page_index'] != null) {
@@ -1013,14 +1029,20 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
         );
         spans.addAll(tajweedSpans);
       } else {
+        // ✅ Simple mode (index 2): strip annotation marks for clean reading.
+        final isSimpleMode = settings.quranFontStyleIndex == 2;
+        final displayText = isSimpleMode
+            ? TajweedService.simplifyForPlainMode(verseText)
+            : verseText;
         spans.add(
           TextSpan(
-            text: "$verseText ",
+            text: "$displayText ",
             style: TextStyle(
               fontFamily: settings.currentFontFamily,
               fontSize: settings.fontSize,
               color: textColor,
-              height: 1.55,
+              // Simple mode: extra line height so Amiri diacritics don't overlap.
+              height: isSimpleMode ? 2.0 : 1.55,
               backgroundColor: bgColor,
             ),
             recognizer: LongPressGestureRecognizer()
@@ -1232,17 +1254,31 @@ class _QuranReadingScreenState extends State<QuranReadingScreen>
                                           ? Colors.white
                                           : const Color(0xFF2C2C2C),
                                     )))
-                                  : Text(verse['aya_text'],
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          fontFamily:
-                                              settings.currentFontFamily,
-                                          fontSize: settings.fontSize,
-                                          color: Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.white
-                                              : const Color(0xFF2C2C2C),
-                                          height: 1.8)),
+                                  : Builder(builder: (context) {
+                                      // ✅ Simple mode: strip annotation marks.
+                                      final isSimpleMode =
+                                          settings.quranFontStyleIndex == 2;
+                                      final rawText =
+                                          verse['aya_text'] as String;
+                                      final displayText = isSimpleMode
+                                          ? TajweedService
+                                              .simplifyForPlainMode(rawText)
+                                          : rawText;
+                                      return Text(
+                                        displayText,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            fontFamily:
+                                                settings.currentFontFamily,
+                                            fontSize: settings.fontSize,
+                                            color: Theme.of(context)
+                                                        .brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white
+                                                : const Color(0xFF2C2C2C),
+                                            height: isSimpleMode ? 2.0 : 1.8),
+                                      );
+                                    }),
                               const SizedBox(height: 15),
                               Row(
                                 mainAxisAlignment:

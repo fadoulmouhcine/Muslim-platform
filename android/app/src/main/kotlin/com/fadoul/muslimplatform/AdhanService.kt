@@ -396,34 +396,6 @@ class AdhanService : Service() {
             stopForeground(false)
         }
 
-        // Post persistent notification (non-ongoing, autoCancel = false) so user can swipe it away manually
-        try {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-            val pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                launchIntent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-
-            val persistentNotification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle(currentTitle)
-                .setContentText(currentBody)
-                .setSmallIcon(getNotificationIcon())
-                .setOngoing(false) // User can swipe it away manually
-                .setAutoCancel(false) // Does NOT auto-clear on click or audio completion
-                .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .build()
-
-            notificationManager.notify(NOTIFICATION_ID, persistentNotification)
-        } catch (e: Exception) {
-            android.util.Log.e("AdhanService", "❌ Error posting persistent notification: ${e.message}")
-        }
-
         stopSelf()
     }
     

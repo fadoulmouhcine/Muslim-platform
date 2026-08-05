@@ -15,8 +15,11 @@ import android.util.Log
 class AdhanBroadcastReceiver : BroadcastReceiver() {
     
     companion object {
-        private var lastBroadcastTime: Long = 0L
-        private var lastBroadcastPrayer: String = ""
+        private const val PREFS_NAME = "FlutterSharedPreferences"
+        private const val KEY_LAST_TIME = "adhanReceiver_lastBroadcastTime"
+        private const val KEY_LAST_PRAYER = "adhanReceiver_lastBroadcastPrayer"
+        // 60-second window — matches the stale-alarm check below
+        private const val DEDUP_WINDOW_MS = 60_000L
     }
     
     override fun onReceive(context: Context, intent: Intent) {
@@ -32,12 +35,21 @@ class AdhanBroadcastReceiver : BroadcastReceiver() {
         val payload = intent.getStringExtra("PAYLOAD") // ✅ Get Payload
 
         val now = System.currentTimeMillis()
-        if (!isReminder && prayerName == lastBroadcastPrayer && (now - lastBroadcastTime) < 30000L) {
-            Log.w("AdhanBroadcastReceiver", "⚠️ Duplicate broadcast for $prayerName received within 30s (${now - lastBroadcastTime}ms). Ignoring.")
-            return
+
+        // 🛡️ PERSISTENT DEDUP: Use SharedPreferences so the guard survives process death
+        if (!isReminder) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val lastTime = prefs.getLong(KEY_LAST_TIME, 0L)
+            val lastPrayer = prefs.getString(KEY_LAST_PRAYER, "") ?: ""
+            if (prayerName == lastPrayer && (now - lastTime) < DEDUP_WINDOW_MS) {
+                Log.w("AdhanBroadcastReceiver", "⚠️ Duplicate broadcast for $prayerName received within ${DEDUP_WINDOW_MS / 1000}s (${now - lastTime}ms). Ignoring.")
+                return
+            }
+            prefs.edit()
+                .putLong(KEY_LAST_TIME, now)
+                .putString(KEY_LAST_PRAYER, prayerName)
+                .apply()
         }
-        lastBroadcastTime = now
-        lastBroadcastPrayer = prayerName
 
         // 🔒 STALE CHECK: Time Jump Fix (Unified for Adhan & Reminder)
         if (scheduledTime > 0) {

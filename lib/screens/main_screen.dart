@@ -12,7 +12,9 @@ import '../services/settings_provider.dart';
 import '../services/notification_service.dart';
 import '../services/prayer_times_controller.dart';
 import '../services/vibration_service.dart';
+import '../services/quran_asset_cache.dart';
 import '../main.dart'; // ✅ Import Global Key
+
 import 'dashboard_screen.dart';
 import '../services/widget_service.dart';
 import 'daily_harvest_screen.dart';
@@ -59,9 +61,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPayload();
       _listenToSettingsChanges();
+
+      // ✅ Performance Fix: Pre-cache the Quran reading screen's Surah
+      // header ornament SVG + Bismillah PNG right after the very first
+      // frame of the app is painted. This runs fully in the background
+      // (never awaited) so it never blocks startup, yet ensures that by
+      // the time the user actually navigates into the Quran reader those
+      // assets are already decoded and instantly ready to paint — no
+      // visible lag/stutter on first open.
+      if (mounted) {
+        QuranAssetCache.precache(context);
+      }
     });
 
     _initAdhanTriggerListener();
+
     _initLocationAndPrayers();
   }
 

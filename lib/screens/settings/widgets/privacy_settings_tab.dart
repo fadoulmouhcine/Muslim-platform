@@ -103,34 +103,75 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
 
     return GestureDetector(
       onTap: () {
-        showAboutDialog(
+        showDialog<void>(
           context: context,
-          applicationName: 'Muslim Platform',
-          applicationVersion: '1.0.0',
-          applicationIcon: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B5E20),
-              borderRadius: BorderRadius.circular(14),
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B5E20),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '\u262a',
+                      style:
+                          TextStyle(fontSize: 28, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Muslim Platform',
+                  style: GoogleFonts.cairo(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'الإصدار 1.0.0',
+                  style: GoogleFonts.cairo(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  legalese,
+                  style: GoogleFonts.cairo(fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'تم تطوير هذا التطبيق بواسطة Mouhcine Fadoul. '
+                  'جميع البيانات تُعالج محلياً على جهازك دون مشاركة مع أي طرف خارجي.',
+                  style: GoogleFonts.cairo(fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            child: const Center(
-              child: Text(
-                '\u262a',
-                style: TextStyle(fontSize: 28, color: Colors.white),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  'حسناً',
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1B5E20),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          applicationLegalese: legalese,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              'تم تطوير هذا التطبيق بواسطة Mouhcine Fadoul. '
-              'جميع البيانات تُعالج محلياً على جهازك دون مشاركة مع أي طرف خارجي.',
-              style: GoogleFonts.cairo(fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ],
         );
       },
       child: Container(

@@ -198,13 +198,13 @@ class _HijriCalendarScreenState extends State<HijriCalendarScreen> {
         children: [
           // Right/Start Chevron (Previous Month)
           IconButton(
-            icon: Icon(
-              isRtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+            icon: const Icon(
+              Icons.chevron_left_rounded,
               size: 28,
             ),
             color: _primaryColor,
-            onPressed: _previousMonth,
-            tooltip: isRtl ? "الشهر السابق" : "Previous Month",
+            onPressed: isRtl ? _nextMonth : _previousMonth,
+            tooltip: isRtl ? "الشهر التالي" : "Previous Month",
           ),
 
           // Center Clean Title & Subtitle
@@ -234,15 +234,15 @@ class _HijriCalendarScreenState extends State<HijriCalendarScreen> {
             ),
           ),
 
-          // Left/End Chevron (Next Month)
+          // Left/End Chevron
           IconButton(
-            icon: Icon(
-              isRtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+            icon: const Icon(
+              Icons.chevron_right_rounded,
               size: 28,
             ),
             color: _primaryColor,
-            onPressed: _nextMonth,
-            tooltip: isRtl ? "الشهر التالي" : "Next Month",
+            onPressed: isRtl ? _previousMonth : _nextMonth,
+            tooltip: isRtl ? "الشهر السابق" : "Next Month",
           ),
         ],
       ),

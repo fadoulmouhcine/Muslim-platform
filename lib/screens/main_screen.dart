@@ -341,7 +341,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _myCoordinates = Coordinates(position.latitude, position.longitude);
 
     const String lang = 'ar';
-    const String fallbackCity = "موقعي";
+    const String fallbackCity = "الموقع الحالي";
 
     String newCity = fallbackCity;
     String? countryCode;

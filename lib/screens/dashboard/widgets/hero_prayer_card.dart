@@ -279,51 +279,58 @@ class HeroPrayerCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        state.titleText,
-                        style: GoogleFonts.cairo(
-                          color: state.phase == PrayerPhase.prayerInProgress
-                              ? const Color(0xFFE5C17C)
-                              : (state.phase == PrayerPhase.iqamahCountdown
-                                  ? const Color(0xFFE5C17C)
-                                  : Colors.white70),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          state.titleText,
+                          style: GoogleFonts.cairo(
+                            color: state.phase == PrayerPhase.prayerInProgress
+                                ? const Color(0xFFE5C17C)
+                                : (state.phase == PrayerPhase.iqamahCountdown
+                                    ? const Color(0xFFE5C17C)
+                                    : Colors.white70),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
                     if (city.isNotEmpty && city != "جاري تحديد الموقع...")
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFC5A059).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
                             color:
-                                const Color(0xFFC5A059).withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.location_on_rounded,
-                                color: Color(0xFFE5C17C), size: 12),
-                            const SizedBox(width: 3),
-                            Text(
-                              city,
-                              style: GoogleFonts.cairo(
-                                color: const Color(0xFFE5C17C),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                const Color(0xFFC5A059).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  const Color(0xFFC5A059).withValues(alpha: 0.3),
+                              width: 0.8,
                             ),
-                          ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.location_on_rounded,
+                                  color: Color(0xFFE5C17C), size: 12),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  city,
+                                  style: GoogleFonts.cairo(
+                                    color: const Color(0xFFE5C17C),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     if (state.phase == PrayerPhase.prayerInProgress) ...[

@@ -322,26 +322,34 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _updateLocationData(Position position,
       {required bool isBackgroundUpdate}) async {
     final prefs = await SharedPreferences.getInstance();
+    const String lang = 'ar';
+    const String fallbackCity = "الموقع الحالي";
 
-    // Skip recalculation if haven't moved significantly
+    // Skip recalculation if haven't moved significantly AND we already have a valid city name
     if (isBackgroundUpdate) {
       double? cachedLat = prefs.getDouble('latitude');
       double? cachedLng = prefs.getDouble('longitude');
+      String? cachedCity = prefs.getString('city');
+      
       if (cachedLat != null && cachedLng != null) {
         double distanceInMeters = Geolocator.distanceBetween(
             cachedLat, cachedLng, position.latitude, position.longitude);
-        if (distanceInMeters < 5000) {
+        
+        bool hasValidCity = cachedCity != null && 
+                            cachedCity.isNotEmpty && 
+                            cachedCity != fallbackCity && 
+                            cachedCity != "جاري تحديد الموقع..." &&
+                            cachedCity != "تعذر تحديد الموقع";
+
+        if (distanceInMeters < 5000 && hasValidCity) {
           debugPrint(
-              "✅ User is in same area (Diff: ${distanceInMeters.toInt()}m). Sync complete.");
+              "✅ User is in same area (Diff: ${distanceInMeters.toInt()}m) with valid city ($cachedCity). Sync complete.");
           return; // Do nothing
         }
       }
     }
 
     _myCoordinates = Coordinates(position.latitude, position.longitude);
-
-    const String lang = 'ar';
-    const String fallbackCity = "الموقع الحالي";
 
     String newCity = fallbackCity;
     String? countryCode;
@@ -354,11 +362,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           await placemarkFromCoordinates(position.latitude, position.longitude)
               .timeout(const Duration(seconds: 4));
       if (placemarks.isNotEmpty) {
-        newCity = placemarks.first.locality ??
-            placemarks.first.country ??
-            fallbackCity;
-        if (newCity.isEmpty) newCity = fallbackCity;
-        countryCode = placemarks.first.isoCountryCode;
+        final p = placemarks.first;
+        // Try multiple fields to find a valid city/region name
+        String? extractedCity = p.locality;
+        if (extractedCity == null || extractedCity.trim().isEmpty) {
+          extractedCity = p.subAdministrativeArea;
+        }
+        if (extractedCity == null || extractedCity.trim().isEmpty) {
+          extractedCity = p.administrativeArea;
+        }
+        if (extractedCity == null || extractedCity.trim().isEmpty) {
+          extractedCity = p.country;
+        }
+        
+        if (extractedCity != null && extractedCity.trim().isNotEmpty) {
+          newCity = extractedCity.trim();
+        }
+
+        countryCode = p.isoCountryCode;
         if (countryCode != null && countryCode.isNotEmpty) {
           isGpsSource = true;
         }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; // For blur effects
 import '../../services/settings_provider.dart';
@@ -23,7 +25,7 @@ enum _LocationStepState { idle, requesting, granted, denied }
 class _SetupScreenState extends State<SetupScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 5;
+  static const int _totalPages = 6;
 
   _LocationStepState _locationState = _LocationStepState.idle;
   String? _resolvedCity;
@@ -137,12 +139,16 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: _buildLocationPage(settings),
                       ),
                       _AnimatedSetupPage(
-                        pageKey: 'goals',
-                        child: _buildGoalsPage(settings),
-                      ),
-                      _AnimatedSetupPage(
                         pageKey: 'quran',
                         child: _buildQuranPage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'calendar',
+                        child: _buildCalendarPage(settings),
+                      ),
+                      _AnimatedSetupPage(
+                        pageKey: 'goals',
+                        child: _buildGoalsPage(settings),
                       ),
                     ],
                   ),
@@ -165,6 +171,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                       ),
                       onPressed: () {
+                        FocusScope.of(context).unfocus(); // Dismiss keyboard
                         VibrationService.triggerHaptic(settings,
                             type: HapticType.medium);
                         if (_currentPage < _totalPages - 1) {
@@ -282,6 +289,9 @@ class _SetupScreenState extends State<SetupScreen> {
           const SizedBox(height: 40),
           TextField(
             controller: _nameController,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[\u0600-\u06FF\s]')),
+            ],
             style: GoogleFonts.cairo(color: Colors.white, fontSize: 18),
             decoration: InputDecoration(
               hintText: "مثال: محسن",
@@ -318,11 +328,12 @@ class _SetupScreenState extends State<SetupScreen> {
     final bool isDenied = _locationState == _LocationStepState.denied;
     final bool isRequesting = _locationState == _LocationStepState.requesting;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 350),
             width: 100,
@@ -361,7 +372,7 @@ class _SetupScreenState extends State<SetupScreen> {
           Text(
               isGranted
                   ? (_resolvedCity != null
-                      ? "يسعدنا تواجدك معنا في مدينة $_resolvedCity، سنقوم بحساب مواقيت الصلاة واتجاه القبلة بدقة لأجلك"
+                      ? "تشرفنا بك، تم تحديث موقعك بنجاح في $_resolvedCity لنقدم لك مواقيت دقيقة"
                       : "تم منح صلاحية الموقع بنجاح! سنحسب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك.")
                   : "نحتاج إلى تفعيل الموقع لحساب أوقات الصلاة واتجاه القبلة بدقة متناهية حسب منطقتك — تُحسب بالكامل بدون إنترنت.",
               textAlign: TextAlign.center,
@@ -427,6 +438,12 @@ class _SetupScreenState extends State<SetupScreen> {
                               timeLimit: Duration(seconds: 5),
                             ),
                           );
+                          
+                          // Save to SharedPreferences so PrayerTimesController can work instantly on MainScreen
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setDouble('latitude', position.latitude);
+                          await prefs.setDouble('longitude', position.longitude);
+                          
                           await setLocaleIdentifier('ar');
                           List<Placemark> placemarks =
                               await placemarkFromCoordinates(position.latitude, position.longitude)
@@ -441,6 +458,7 @@ class _SetupScreenState extends State<SetupScreen> {
                               extractedCity = p.administrativeArea;
                             }
                             if (extractedCity != null && extractedCity.trim().isNotEmpty) {
+                              await prefs.setString('city', extractedCity.trim());
                               if (mounted) {
                                 setState(() {
                                   _resolvedCity = extractedCity!.trim();
@@ -472,10 +490,55 @@ class _SetupScreenState extends State<SetupScreen> {
                   isGranted
                       ? "تم منح الصلاحية ✓"
                       : (isDenied ? AppStrings.retry : "منح الصلاحية"),
-
                   style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
             ),
           )
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarPage(SettingsProvider settings) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text("التقويم الميلادي",
+              style: GoogleFonts.cairo(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  height: 1.2)),
+          const SizedBox(height: 10),
+          Text("اختر نمط تسمية الأشهر الميلادية المفضل لديك.",
+              style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
+          const SizedBox(height: 50),
+          _buildOptionItem(
+              "المشرقي (كانون الثاني، شباط...)",
+              settings.gregorianMonthNaming == 'levantine',
+              () {
+                VibrationService.triggerHaptic(settings, type: HapticType.selection);
+                settings.setGregorianMonthNaming('levantine');
+              }),
+          const SizedBox(height: 12),
+          _buildOptionItem(
+              "المغاربي (يناير، فبراير...)",
+              settings.gregorianMonthNaming == 'maghrebi',
+              () {
+                VibrationService.triggerHaptic(settings, type: HapticType.selection);
+                settings.setGregorianMonthNaming('maghrebi');
+              }),
+          const SizedBox(height: 12),
+          _buildOptionItem(
+              "القياسي (يناير، فبراير...)",
+              settings.gregorianMonthNaming == 'standard',
+              () {
+                VibrationService.triggerHaptic(settings, type: HapticType.selection);
+                settings.setGregorianMonthNaming('standard');
+              }),
         ],
       ),
     );

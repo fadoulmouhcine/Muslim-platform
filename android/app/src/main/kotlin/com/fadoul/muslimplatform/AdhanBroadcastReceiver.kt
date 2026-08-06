@@ -20,6 +20,7 @@ class AdhanBroadcastReceiver : BroadcastReceiver() {
         private const val KEY_LAST_PRAYER = "adhanReceiver_lastBroadcastPrayer"
         // 60-second window — matches the stale-alarm check below
         private const val DEDUP_WINDOW_MS = 60_000L
+        const val ACTION_MUTE_UPCOMING_ADHAN = "com.fadoul.muslimplatform.ACTION_MUTE_UPCOMING_ADHAN"
     }
     
     override fun onReceive(context: Context, intent: Intent) {
@@ -34,11 +35,41 @@ class AdhanBroadcastReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra("BODY") ?: "اقتربت الصلاة"
         val payload = intent.getStringExtra("PAYLOAD") // ✅ Get Payload
 
+        if (intent.action == ACTION_MUTE_UPCOMING_ADHAN) {
+            val mutePrayerName = intent.getStringExtra("PRAYER_NAME") ?: return
+            val notifId = intent.getIntExtra("NOTIFICATION_ID", -1)
+            
+            // 1. Mute it in SharedPreferences
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("MUTE_UPCOMING_$mutePrayerName", true).apply()
+            
+            // 2. Clear the reminder notification
+            if (notifId != -1) {
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                notificationManager.cancel(notifId)
+            }
+            
+            // 3. Show Toast
+            android.widget.Toast.makeText(context, "تم كتم أذان $mutePrayerName لهذه الصلاة", android.widget.Toast.LENGTH_SHORT).show()
+            
+            Log.d("AdhanBroadcastReceiver", "🔕 Muted upcoming adhan for: $mutePrayerName")
+            return
+        }
+
         val now = System.currentTimeMillis()
 
         // 🛡️ PERSISTENT DEDUP: Use SharedPreferences so the guard survives process death
         if (!isReminder) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            
+            // Check Mute Flag from Reminder Action
+            if (prefs.getBoolean("MUTE_UPCOMING_$prayerName", false)) {
+                Log.d("AdhanBroadcastReceiver", "🔕 Adhan for $prayerName was MUTED by user via Reminder Action. Skipping AdhanService.")
+                // Clear the flag for next day
+                prefs.edit().remove("MUTE_UPCOMING_$prayerName").apply()
+                return
+            }
+
             val lastTime = prefs.getLong(KEY_LAST_TIME, 0L)
             val lastPrayer = prefs.getString(KEY_LAST_PRAYER, "") ?: ""
             if (prayerName == lastPrayer && (now - lastTime) < DEDUP_WINDOW_MS) {
@@ -68,14 +99,14 @@ class AdhanBroadcastReceiver : BroadcastReceiver() {
         
         if (isReminder) {
             // 📣 SHOW STANDARD NOTIFICATION (Manual)
-            showReminderNotification(context, title, body, soundFile, payload)
+            showReminderNotification(context, prayerName, title, body, soundFile, payload)
         } else {
             // 🕌 START ADHAN SERVICE
             AdhanService.startAdhan(context, prayerName, soundFile, title, body)
         }
     }
 
-    private fun showReminderNotification(context: Context, title: String, body: String, soundName: String, payload: String?) {
+    private fun showReminderNotification(context: Context, prayerName: String, title: String, body: String, soundName: String, payload: String?) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val channelId = "reminder_channel_v11_native" // Native Channel
         
@@ -147,7 +178,28 @@ class AdhanBroadcastReceiver : BroadcastReceiver() {
         )
         builder.setContentIntent(pendingContentIntent)
 
-        notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), builder.build())
+        val notificationId = (System.currentTimeMillis() % 10000).toInt()
+        
+        // Mute Action Intent
+        val muteIntent = Intent(context, AdhanBroadcastReceiver::class.java).apply {
+            action = ACTION_MUTE_UPCOMING_ADHAN
+            putExtra("PRAYER_NAME", prayerName)
+            putExtra("NOTIFICATION_ID", notificationId)
+        }
+        val pendingMuteIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 100, // Unique request code
+            muteIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        builder.addAction(
+            0, // Optional icon, using 0 skips it
+            "🔕 عدم تشغيل الأذان لهذه الصلاة",
+            pendingMuteIntent
+        )
+
+        notificationManager.notify(notificationId, builder.build())
         Log.d("AdhanBroadcastReceiver", "🔔 Native Notification POSTED: $title (Icon: $safeIcon)")
     }
 }

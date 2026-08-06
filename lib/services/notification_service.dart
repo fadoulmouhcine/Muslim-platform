@@ -305,6 +305,8 @@ class NotificationService {
     await prefs.setInt(
         'native_notification_offset', prefs.getInt('notificationOffset') ?? 0);
 
+    String userName = prefs.getString('userName') ?? "مسلم";
+
     String rawSound = prefs.getString('adhanSound') ?? 'adhan_hamza';
     String adhanSound = rawSound.split('.').first;
 
@@ -400,11 +402,11 @@ class NotificationService {
             if (reminderTime.isAfter(now)) {
               await _scheduleNotification(
                 reminderId,
-                "اقتربت صلاة $translatedPrayerName",
+                translatedPrayerName,
                 reminderTime,
                 'takbeer',
                 isReminder: true,
-                customTitle: "🕌 اقتربت صلاة $translatedPrayerName",
+                customTitle: "$userName، لقد اقتربت صلاة $translatedPrayerName 🕌",
                 customBody: reminderBodyText,
               );
             }

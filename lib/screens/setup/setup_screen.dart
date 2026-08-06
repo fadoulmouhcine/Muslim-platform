@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui'; // For blur effects
 import '../../services/settings_provider.dart';
-import '../../services/arabic_plural_helper.dart';
 import '../../services/vibration_service.dart';
 import '../main_screen.dart';
 import '../../constants/app_strings.dart';
@@ -25,7 +24,7 @@ enum _LocationStepState { idle, requesting, granted, denied }
 class _SetupScreenState extends State<SetupScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 6;
+  static const int _totalPages = 4;
 
   _LocationStepState _locationState = _LocationStepState.idle;
   String? _resolvedCity;
@@ -127,10 +126,6 @@ class _SetupScreenState extends State<SetupScreen> {
                     onPageChanged: (idx) => setState(() => _currentPage = idx),
                     children: [
                       _AnimatedSetupPage(
-                        pageKey: 'numerals',
-                        child: _buildLanguagePage(settings),
-                      ),
-                      _AnimatedSetupPage(
                         pageKey: 'name',
                         child: _buildNamePage(settings),
                       ),
@@ -145,10 +140,6 @@ class _SetupScreenState extends State<SetupScreen> {
                       _AnimatedSetupPage(
                         pageKey: 'calendar',
                         child: _buildCalendarPage(settings),
-                      ),
-                      _AnimatedSetupPage(
-                        pageKey: 'goals',
-                        child: _buildGoalsPage(settings),
                       ),
                     ],
                   ),
@@ -229,47 +220,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
   // --- Pages ---
 
-  Widget _buildLanguagePage(SettingsProvider settings) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("مرحباً بك",
-              style: GoogleFonts.cairo(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1.2)),
-          const SizedBox(height: 10),
-          Text("اختر شكل الأرقام المفضل لديك في التطبيق.",
-              style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
-          const SizedBox(height: 50),
-          Text("نظام الأرقام",
-              style: GoogleFonts.cairo(
-                  color: _primary, fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                  child: _buildOptionItem(
-                      "١٢٣",
-                      settings.numberType == 'arabic',
-                      () => _selectNumberType(settings, 'arabic'))),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _buildOptionItem(
-                      "123",
-                      settings.numberType == 'latin',
-                      () => _selectNumberType(settings, 'latin'))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildNamePage(SettingsProvider settings) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -318,10 +268,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  void _selectNumberType(SettingsProvider settings, String type) {
-    VibrationService.triggerHaptic(settings, type: HapticType.selection);
-    settings.setNumberType(type);
-  }
+
 
   Widget _buildLocationPage(SettingsProvider settings) {
     final bool isGranted = _locationState == _LocationStepState.granted;
@@ -544,75 +491,6 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _buildGoalsPage(SettingsProvider settings) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("وردك اليومي",
-              style: GoogleFonts.cairo(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
-          Text("حدد هدفك لنساعدك على الالتزام.",
-              style: GoogleFonts.cairo(fontSize: 16, color: Colors.white54)),
-          const SizedBox(height: 50),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("القرآن الكريم",
-                  style: GoogleFonts.cairo(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                    color: _primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8)),
-                // ✅ تطبيق الأرقام على عدد الأحزاب
-                child: Text(
-                    settings.replaceDigits(
-                        ArabicPluralHelper.formatHizb(settings.dailyHizbGoal)),
-                    style: GoogleFonts.cairo(
-                        color: _primary, fontWeight: FontWeight.bold)),
-              )
-            ],
-          ),
-          const SizedBox(height: 20),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-                activeTrackColor: _primary,
-                inactiveTrackColor: Colors.white10,
-                thumbColor: Colors.white,
-                overlayColor: _primary.withValues(alpha: 0.1),
-                trackHeight: 4,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
-            child: Slider(
-              value: settings.dailyHizbGoal.toDouble(),
-              min: 1,
-              max: 10,
-              divisions: 9,
-              onChanged: (val) {
-                VibrationService.triggerHaptic(settings,
-                    type: HapticType.selection);
-                settings.updateGoals(hizb: val.toInt());
-              },
-            ),
-          ),
-          const SizedBox(height: 40),
-          _buildMinimalSwitch(settings, "تذكير أذكار الصباح",
-              settings.remindAdhkarSabah, (v) => settings.updateGoals(sabah: v)),
-          const SizedBox(height: 15),
-          _buildMinimalSwitch(settings, "تذكير أذكار المساء",
-              settings.remindAdhkarMasaa, (v) => settings.updateGoals(masaa: v)),
-        ],
-      ),
-    );
-  }
 
   Widget _buildQuranPage(SettingsProvider settings) {
     return Padding(
@@ -712,27 +590,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _buildMinimalSwitch(SettingsProvider settings, String title,
-      bool value, Function(bool) onChanged) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title,
-            style: GoogleFonts.cairo(color: Colors.white70, fontSize: 16)),
-        Switch(
-            value: value,
-            onChanged: (v) {
-              VibrationService.triggerHaptic(settings,
-                  type: HapticType.selection);
-              onChanged(v);
-            },
-            activeThumbColor: _bgDark,
-            activeTrackColor: _primary,
-            inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: Colors.white10)
-      ],
-    );
-  }
+
 
   void _finishSetup() async {
     final settings = Provider.of<SettingsProvider>(context, listen: false);

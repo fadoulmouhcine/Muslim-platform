@@ -71,6 +71,19 @@ class AdhanService : Service() {
     
     @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 🚨 CRITICAL FIX: Handle notification actions FIRST before any deduplication or isPlaying checks!
+        if (intent?.action == "STOP_ADHAN") {
+            cleanup()
+            return START_NOT_STICKY
+        }
+
+        if (intent?.action == "MUTE_SILENT_MODE") {
+            SilentModeChannel.muteDevice(this)
+            android.widget.Toast.makeText(this, "🔕 تم تفعيل الوضع الصامت للصلاة", android.widget.Toast.LENGTH_SHORT).show()
+            cleanup() // Stop Adhan audio since device is now muted for prayer
+            return START_NOT_STICKY
+        }
+
         val prayerName = intent?.getStringExtra("PRAYER_NAME") ?: "الصلاة"
         
         // 🔒 PERSISTENT DISK DEDUPING & RE-ENTRANCY GUARD: Abort if played within 3 mins
@@ -106,17 +119,6 @@ class AdhanService : Service() {
         val soundFileName = intent?.getStringExtra("SOUND_FILE") ?: "adhan_hamza"
         
         // 1️⃣ نبداو Foreground Service بـ Notification
-        if (intent?.action == "STOP_ADHAN") {
-            cleanup()
-            return START_NOT_STICKY
-        }
-
-        if (intent?.action == "MUTE_SILENT_MODE") {
-            SilentModeChannel.muteDevice(this)
-            android.widget.Toast.makeText(this, "🔕 تم تفعيل الوضع الصامت للصلاة", android.widget.Toast.LENGTH_SHORT).show()
-            return START_NOT_STICKY
-        }
-
         createNotificationChannel()
         val notification = createForegroundNotification()
         startForeground(NOTIFICATION_ID, notification)

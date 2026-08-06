@@ -23,6 +23,42 @@ class NotificationService {
   static const MethodChannel _adhanChannel =
       MethodChannel(MethodChannelNames.adhan);
 
+  static Future<void> clearActiveNotifications() async {
+    try {
+      if (Platform.isAndroid) {
+        final androidImplementation = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        
+        final List<ActiveNotification>? activeNotifications = await androidImplementation?.getActiveNotifications();
+        
+        if (activeNotifications != null) {
+          for (final active in activeNotifications) {
+            if (active.id != null) {
+              await _notificationsPlugin.cancel(active.id!);
+            }
+          }
+          debugPrint("🧹 Cleared ${activeNotifications.length} active notifications.");
+        }
+      } else if (Platform.isIOS) {
+        final iosImplementation = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+        
+        final List<ActiveNotification>? activeNotifications = await iosImplementation?.getActiveNotifications();
+        
+        if (activeNotifications != null) {
+          for (final active in activeNotifications) {
+            if (active.id != null) {
+              await _notificationsPlugin.cancel(active.id!);
+            }
+          }
+          debugPrint("🧹 Cleared ${activeNotifications.length} active notifications.");
+        }
+      }
+    } catch (e) {
+      debugPrint("⚠️ Warning while clearing active notifications: $e");
+    }
+  }
+
   static Future<void> init() async {
     tz.initializeTimeZones();
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();
@@ -34,9 +70,9 @@ class NotificationService {
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     await _notificationsPlugin.initialize(
@@ -50,7 +86,6 @@ class NotificationService {
           _notificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      await androidImplementation?.requestNotificationsPermission();
       await androidImplementation?.requestExactAlarmsPermission();
     }
 
@@ -270,8 +305,8 @@ class NotificationService {
     await prefs.setString('native_latitude', coords.latitude.toString());
     await prefs.setString('native_longitude', coords.longitude.toString());
 
-    int nativeMethodIndex = 21;
-    switch (prefs.getString('calculationMethod') ?? 'morocco') {
+    int nativeMethodIndex = 0; // Default to MWL
+    switch (prefs.getString('calculationMethod') ?? 'mwl') {
       case 'mwl':
         nativeMethodIndex = 0;
         break;
@@ -291,8 +326,10 @@ class NotificationService {
         nativeMethodIndex = 5;
         break;
       case 'morocco':
-      default:
         nativeMethodIndex = 21;
+        break;
+      default:
+        nativeMethodIndex = 0;
         break;
     }
     await prefs.setInt('native_calculation_method_index', nativeMethodIndex);
@@ -373,13 +410,8 @@ class NotificationService {
           tz.TZDateTime finalTime = scheduledTime;
 
           String translatedPrayerName = PrayerMessaging.getTranslatedName(name);
-          String prayerTitle = PrayerMessaging.getTitle(name);
-          String prayerBody = PrayerMessaging.getBody(name);
-
-          final String offsetMinutesFormatted =
-              ArabicPluralHelper.formatMinutes(currentOffset);
-          final String reminderBodyText =
-              "﴿وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ﴾ • تبقى $offsetMinutesFormatted على الأذان";
+          String prayerTitle = PrayerMessaging.getTitle(name, userName: userName);
+          String prayerBody = PrayerMessaging.getBody(name, userName: userName);
 
           // 1. الأذان / الشروق (Strict ID 100+)
           if (!isMuted) {
@@ -406,8 +438,8 @@ class NotificationService {
                 reminderTime,
                 'takbeer',
                 isReminder: true,
-                customTitle: "$userName، لقد اقتربت صلاة $translatedPrayerName 🕌",
-                customBody: reminderBodyText,
+                customTitle: PrayerMessaging.getReminderTitle(name, userName: userName),
+                customBody: PrayerMessaging.getReminderBody(name, currentOffset),
               );
             }
           }
@@ -691,7 +723,7 @@ class NotificationService {
     Coordinates coordinates = Coordinates(lat, long);
 
     // 3. إعدادات الحساب
-    String method = prefs.getString('calculationMethod') ?? 'umm_al_qura';
+    String method = prefs.getString('calculationMethod') ?? 'mwl';
     CalculationParameters params;
     switch (method) {
       case 'egypt':
@@ -703,13 +735,15 @@ class NotificationService {
           ishaAngle: 17.0,
           method: CalculationMethod.other,
         );
-        break;
-      case 'mwl':
-        params = CalculationMethod.muslim_world_league.getParameters();
+        params.adjustments.dhuhr = 5;
+        params.adjustments.maghrib = 3;
         break;
       case 'umm_al_qura':
-      default:
         params = CalculationMethod.umm_al_qura.getParameters();
+        break;
+      case 'mwl':
+      default:
+        params = CalculationMethod.muslim_world_league.getParameters();
         break;
     }
     // ✅ Read the user's actual Madhab preference instead of hardcoding Shafi.
@@ -776,53 +810,79 @@ class PrayerMessaging {
     }
   }
 
-  static String getTitle(String nameOrKey) {
+  static String getTitle(String nameOrKey, {String? userName}) {
+    String suffix = (userName != null && userName.trim().isNotEmpty) ? " يا ${userName.trim()}" : "";
     switch (nameOrKey) {
       case 'Fajr':
       case 'الفجر':
-        return '🕌 حان الآن وقت أذان الفجر';
+        return '🤍 الصلاة خير من النوم';
       case 'Sunrise':
       case 'الشروق':
-        return '🌅 حان الآن وقت الشروق';
+        return '🌅 حان الآن وقت الشروق$suffix';
       case 'Dhuhr':
       case 'الظهر':
-        return '🕌 حان الآن وقت أذان الظهر';
+        return '🕌 أرحنا بها$suffix';
       case 'Asr':
       case 'العصر':
-        return '🕌 حان الآن وقت أذان العصر';
+        return '🕌 حان وقت أذان العصر';
       case 'Maghrib':
       case 'المغرب':
-        return '🕌 حان الآن وقت أذان المغرب';
+        return '🕌 حان أذان المغرب$suffix';
       case 'Isha':
       case 'العشاء':
-        return '🕌 حان الآن وقت أذان العشاء';
+        return '🕌 حان وقت أذان العشاء';
       default:
-        return '🕌 حان الآن وقت أذان $nameOrKey';
+        return '🕌 حان الآن وقت أذان $nameOrKey$suffix';
     }
   }
 
-  static String getBody(String nameOrKey) {
+  static String getBody(String nameOrKey, {String? userName}) {
+    String suffix = (userName != null && userName.trim().isNotEmpty) ? " يا ${userName.trim()}" : "";
     switch (nameOrKey) {
       case 'Fajr':
       case 'الفجر':
-        return '﴿إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُوداً﴾ • الصلاة خير من النوم، حان وقت الفلاح.';
+        return 'حان وقت أذان الفجر$suffix.. انهض لربك وانعم بالسكينة.';
       case 'Sunrise':
       case 'الشروق':
         return '﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ﴾ • أشرقت الأرض بنور ربها، أذكار الصباح حصنك.';
       case 'Dhuhr':
       case 'الظهر':
-        return '﴿وَأَقِمِ الصَّلَاةَ لِذِكْرِي﴾ • حان وقت اللقاء، استعد لصلاة الجماعة.';
+        return 'حان أذان الظهر.. جدد وضوءك، وصافح السكينة في صلاتك.';
       case 'Asr':
       case 'العصر':
-        return '﴿حَافِظُوا عَلَى الصَّلَوَاتِ وَالصَّلَاةِ الْوُسْطَىٰ﴾ • طُوبَى لمن حافظ عليها في وقتها.';
+        return 'اقتطع من وقتك دقائق لربك$suffix.. طوبى لمن حافظ عليها.';
       case 'Maghrib':
       case 'المغرب':
-        return '﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ﴾ • تقبل الله طاعتكم وصالح أعمالكم.';
+        return 'طوى النهار صحائفه، فاجعل طاعتك مسك الختام.';
       case 'Isha':
       case 'العشاء':
-        return '﴿وَمِنَ اللَّيْلِ فَسَبِّحْهُ وَأَدْبَارَ السُّجُودِ﴾ • اختم يومك بالقيام والسكينة.';
+        return 'في هدوء الليل، لقاء ربك هو أجمل ختام.. لا تنس الوتر$suffix.';
       default:
-        return '﴿وَأَقِمِ الصَّلَاةَ لِذِكْرِي﴾ • حان وقت اللقاء، استعد لصلاة الجماعة.';
+        return 'حان وقت اللقاء، استعد لصلاة الجماعة.';
+    }
+  }
+
+  static String getReminderTitle(String prayerName, {String? userName}) {
+    String suffix = (userName != null && userName.trim().isNotEmpty) ? " يا ${userName.trim()}" : "";
+    switch (prayerName) {
+      case 'Fajr': case 'الفجر': return '🌙 الفجر ينادي$suffix';
+      case 'Dhuhr': case 'الظهر': return '🌿 وقت الراحة$suffix';
+      case 'Asr': case 'العصر': return '🕊️ الصلاة الوسطى$suffix';
+      case 'Maghrib': case 'المغرب': return '🌅 غروب يومك$suffix';
+      case 'Isha': case 'العشاء': return '🌙 ختام اليوم$suffix';
+      default: return 'لقد اقتربت الصلاة$suffix';
+    }
+  }
+
+  static String getReminderBody(String prayerName, int offsetMinutes) {
+    String minStr = ArabicPluralHelper.formatMinutes(offsetMinutes);
+    switch (prayerName) {
+      case 'Fajr': case 'الفجر': return 'توضأ واستعد.. ففي الفجر أسرار لا يدركها النائمون. (تبقى $minStr)';
+      case 'Dhuhr': case 'الظهر': return 'تبقى $minStr على صلاة الظهر. اترك مشاغل الدنيا فالله أكبر.';
+      case 'Asr': case 'العصر': return 'دقائق تفصلنا عن العصر ($minStr). استعد لنفحات هذا الوقت المبارك.';
+      case 'Maghrib': case 'المغرب': return 'تبقى $minStr للمغرب. استعد لختم نهارك بشكر الله على نعمه.';
+      case 'Isha': case 'العشاء': return 'تبقى $minStr للعشاء. توضأ لتختم يومك بسجدة تريح بها قلبك.';
+      default: return 'تبقى $minStr على الأذان';
     }
   }
 }

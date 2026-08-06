@@ -18,7 +18,7 @@ class SettingsProvider with ChangeNotifier {
   String _adhanSound = 'adhan_hamza';
   double _adhanVolume = 0.8;
   int _notificationOffset = 0;
-  String _calculationMethod = 'umm_al_qura';
+  String _calculationMethod = 'mwl';
   int? _preFajrAlarmMinutes;
   Map<String, bool> _prayerMuteStatus = {
     'fajr': false,
@@ -46,6 +46,7 @@ class SettingsProvider with ChangeNotifier {
   bool _remindAdhkarSabah = true;
   bool _remindAdhkarMasaa = true;
   bool _autoSilentEnabled = false;
+  bool _respectSilentMode = false;
   bool _isHapticEnabled = true; // ✅ Global haptic setting
 
   // --- إعدادات التذكيرات الذكية (Step 3) ---
@@ -59,6 +60,31 @@ class SettingsProvider with ChangeNotifier {
   // --- إعدادات التقويم الهجري والميلادي ---
   String _gregorianMonthNaming =
       'standard'; // 'standard', 'maghrebi', 'levantine'
+      
+  // --- Location Data ---
+  double? _latitude;
+  double? _longitude;
+  String? _city;
+  
+  double? get latitude => _latitude;
+  double? get longitude => _longitude;
+  String? get city => _city;
+  
+  Future<void> setLocation(double lat, double lng, String? cityName) async {
+    _latitude = lat;
+    _longitude = lng;
+    if (cityName != null && cityName.trim().isNotEmpty) {
+      _city = cityName.trim();
+    }
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('latitude', lat);
+    await prefs.setDouble('longitude', lng);
+    if (_city != null) {
+      await prefs.setString('city', _city!);
+    }
+    notifyListeners();
+  }
 
   // --- Getters ---
   String get userName => _userName;
@@ -70,6 +96,7 @@ class SettingsProvider with ChangeNotifier {
   bool get isWarsh => _quranType == 'warsh';
   String get gregorianMonthNaming => _gregorianMonthNaming;
   bool get autoSilentEnabled => _autoSilentEnabled;
+  bool get respectSilentMode => _respectSilentMode;
   bool get isHapticEnabled => _isHapticEnabled;
   bool get isMulkReminderEnabled => _isMulkReminderEnabled;
   bool get isFastingReminderEnabled => _isFastingReminderEnabled;
@@ -150,12 +177,17 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setAutoSilentEnabled(bool enabled) async {
-    if (_autoSilentEnabled != enabled) {
-      _autoSilentEnabled = enabled;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('autoSilentEnabled', enabled);
-      notifyListeners();
-    }
+    _autoSilentEnabled = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('autoSilentEnabled', enabled);
+    notifyListeners();
+  }
+
+  Future<void> setRespectSilentMode(bool enabled) async {
+    _respectSilentMode = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('respect_silent_mode', enabled);
+    notifyListeners();
   }
 
   Future<void> setHapticEnabled(bool enabled) async {
@@ -436,6 +468,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Location
+    _latitude = prefs.getDouble('latitude');
+    _longitude = prefs.getDouble('longitude');
+    _city = prefs.getString('city');
+
+
     // Quran
     _fontSize = prefs.getDouble('fontSize') ?? 24.0;
     _isMushafMode = prefs.getBool('isMushafMode') ?? true;
@@ -468,7 +506,7 @@ class SettingsProvider with ChangeNotifier {
     _adhanSound = prefs.getString('adhanSound') ?? 'adhan_hamza';
     _adhanVolume = prefs.getDouble('adhanVolume') ?? 0.8;
     _notificationOffset = prefs.getInt('notificationOffset') ?? 0;
-    _calculationMethod = prefs.getString('calculationMethod') ?? 'umm_al_qura';
+    _calculationMethod = prefs.getString('calculationMethod') ?? 'mwl';
     _preFajrAlarmMinutes = prefs.getInt('preFajrAlarmMinutes');
     _isAutoMethod = prefs.getBool('isAutoMethod') ?? true;
     _lastCountryCode = prefs.getString('lastCountryCode');
@@ -497,6 +535,7 @@ class SettingsProvider with ChangeNotifier {
     _userName = prefs.getString('userName') ?? "مسلم";
 
     _dailyHizbGoal = prefs.getInt('dailyHizbGoal') ?? 1;
+    _respectSilentMode = prefs.getBool('respect_silent_mode') ?? false;
 
     _dailyTasbihGoal = prefs.getInt('dailyTasbihGoal') ?? 100;
     _remindAdhkarSabah = prefs.getBool('remindAdhkarSabah') ?? true;
@@ -627,6 +666,7 @@ class SettingsProvider with ChangeNotifier {
 
   static const Map<String, String> countryToMethodMap = {
     'MA': 'morocco',
+    'MAR': 'morocco',
     'SA': 'umm_al_qura',
     'EG': 'egypt',
     'DZ': 'algeria',
@@ -757,14 +797,32 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> setAutoMethodEnabled(bool enabled,
       {String? currentCountryCode, double? lat, double? lng}) async {
-    _isAutoMethod = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isAutoMethod', enabled);
-
     if (enabled) {
-      final code = currentCountryCode ?? _lastCountryCode;
-      final target = resolveMethodForCountry(code, lat: lat, lng: lng);
-      await setCalculationMethod(target, isUserAction: false);
+      final incomingCode = currentCountryCode ?? _lastCountryCode;
+      final targetMethod =
+          resolveMethodForCountry(incomingCode, lat: lat, lng: lng);
+
+      // Short-circuit: if auto-method is already on, the country hasn't changed,
+      // and the resolved target already matches the current method — nothing to do.
+      // Avoids a redundant setCalculationMethod + notifyListeners cascade that
+      // would re-fire the settings-fingerprint listener in main_screen and trigger
+      // a background GPS sync for zero benefit.
+      if (_isAutoMethod &&
+          incomingCode == _lastCountryCode &&
+          _calculationMethod == targetMethod) {
+        debugPrint(
+            "[AUTO-METHOD] No-op: already enabled, same country ($incomingCode), same method ($targetMethod).");
+        return;
+      }
+
+      _isAutoMethod = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isAutoMethod', true);
+      await setCalculationMethod(targetMethod, isUserAction: false);
+    } else {
+      _isAutoMethod = false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isAutoMethod', false);
     }
     notifyListeners();
   }

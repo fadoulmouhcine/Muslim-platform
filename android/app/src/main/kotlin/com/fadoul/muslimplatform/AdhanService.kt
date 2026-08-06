@@ -113,8 +113,11 @@ class AdhanService : Service() {
 
         currentPrayerName = prayerName
         
-        currentTitle = intent?.getStringExtra("TITLE") ?: getPrayerTitleFallback(prayerName)
-        currentBody = intent?.getStringExtra("BODY") ?: getPrayerBodyFallback(prayerName)
+        val prefsFlutter = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val userNameRaw = prefsFlutter.getString("flutter.userName", "")?.trim()
+        
+        currentTitle = intent?.getStringExtra("TITLE") ?: getPrayerTitleFallback(prayerName, userNameRaw)
+        currentBody = intent?.getStringExtra("BODY") ?: getPrayerBodyFallback(prayerName, userNameRaw)
 
         val soundFileName = intent?.getStringExtra("SOUND_FILE") ?: "adhan_hamza"
         
@@ -140,27 +143,31 @@ class AdhanService : Service() {
         return START_NOT_STICKY // باش يرجع يبدا ila ت9فل Service
     }
 
-    private fun getPrayerTitleFallback(name: String): String {
+    private fun getPrayerTitleFallback(name: String, userNameRaw: String?): String {
+        val suffix = if (!userNameRaw.isNullOrBlank()) " يا $userNameRaw" else ""
+
         return when (name.trim()) {
-            "Fajr", "الفجر" -> "🕌 حان الآن وقت أذان الفجر"
-            "Sunrise", "الشروق" -> "🌅 حان الآن وقت الشروق"
-            "Dhuhr", "الظهر" -> "🕌 حان الآن وقت أذان الظهر"
-            "Asr", "العصر" -> "🕌 حان الآن وقت أذان العصر"
-            "Maghrib", "المغرب" -> "🕌 حان الآن وقت أذان المغرب"
-            "Isha", "العشاء" -> "🕌 حان الآن وقت أذان العشاء"
-            else -> "🕌 حان الآن وقت أذان $name"
+            "Fajr", "الفجر" -> "🤍 الصلاة خير من النوم"
+            "Sunrise", "الشروق" -> "🌅 حان الآن وقت الشروق$suffix"
+            "Dhuhr", "الظهر" -> "🕌 أرحنا بها$suffix"
+            "Asr", "العصر" -> "🕌 حان وقت أذان العصر"
+            "Maghrib", "المغرب" -> "🕌 حان أذان المغرب$suffix"
+            "Isha", "العشاء" -> "🕌 حان وقت أذان العشاء"
+            else -> "🕌 حان الآن وقت أذان $name$suffix"
         }
     }
 
-    private fun getPrayerBodyFallback(name: String): String {
+    private fun getPrayerBodyFallback(name: String, userNameRaw: String?): String {
+        val suffix = if (!userNameRaw.isNullOrBlank()) " يا $userNameRaw" else ""
+        
         return when (name.trim()) {
-            "Fajr", "الفجر" -> "﴿إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُوداً﴾ • الصلاة خير من النوم، حان وقت الفلاح."
+            "Fajr", "الفجر" -> "حان وقت أذان الفجر$suffix.. انهض لربك وانعم بالسكينة."
             "Sunrise", "الشروق" -> "﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ﴾ • أشرقت الأرض بنور ربها، أذكار الصباح حصنك."
-            "Dhuhr", "الظهر" -> "﴿وَأَقِمِ الصَّلَاةَ لِذِكْرِي﴾ • حان وقت اللقاء، استعد لصلاة الجماعة."
-            "Asr", "العصر" -> "﴿حَافِظُوا عَلَى الصَّلَوَاتِ وَالصَّلَاةِ الْوُسْطَىٰ﴾ • طُوبَى لمن حافظ عليها في وقتها."
-            "Maghrib", "المغرب" -> "﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ﴾ • تقبل الله طاعتكم وصالح أعمالكم."
-            "Isha", "العشاء" -> "﴿وَمِنَ اللَّيْلِ فَسَبِّحْهُ وَأَدْبَارَ السُّجُودِ﴾ • اختم يومك بالقيام والسكينة."
-            else -> "﴿وَأَقِمِ الصَّلَاةَ لِذِكْرِي﴾ • حان وقت اللقاء، استعد لصلاة الجماعة."
+            "Dhuhr", "الظهر" -> "حان أذان الظهر.. جدد وضوءك، وصافح السكينة في صلاتك."
+            "Asr", "العصر" -> "اقتطع من وقتك دقائق لربك$suffix.. طوبى لمن حافظ عليها."
+            "Maghrib", "المغرب" -> "طوى النهار صحائفه، فاجعل طاعتك مسك الختام."
+            "Isha", "العشاء" -> "في هدوء الليل، لقاء ربك هو أجمل ختام.. لا تنس الوتر$suffix."
+            else -> "حان وقت اللقاء، استعد لصلاة الجماعة."
         }
     }
     

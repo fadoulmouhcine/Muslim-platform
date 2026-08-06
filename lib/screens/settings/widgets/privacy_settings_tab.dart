@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
 import '../../../services/app_colors.dart';
+import '../../../services/settings_provider.dart';
 
 class PrivacySettingsTab extends StatefulWidget {
   const PrivacySettingsTab({super.key});
@@ -10,8 +13,38 @@ class PrivacySettingsTab extends StatefulWidget {
   State<PrivacySettingsTab> createState() => _PrivacySettingsTabState();
 }
 
-class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
+class _PrivacySettingsTabState extends State<PrivacySettingsTab> with WidgetsBindingObserver {
   int _locationMode = 0; // 0: Precise, 1: Approximate
+  bool _isNotificationGranted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNotificationStatus();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkNotificationStatus();
+    }
+  }
+
+  Future<void> _checkNotificationStatus() async {
+    final status = await Permission.notification.status;
+    if (mounted) {
+      setState(() {
+        _isNotificationGranted = status.isGranted;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,53 +76,20 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-          ),
+        _buildSettingsCard(
+          title: "صلاحيات الإشعارات",
+          icon: Icons.notifications_active_outlined,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded,
-                      color: Colors.red[700], size: 24),
-                  const SizedBox(width: 10),
-                  Text(
-                    "منطقة الخطر",
-                    style: GoogleFonts.cairo(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red[700],
-                    ),
-                  ),
-                ],
+              _buildNotificationTile(),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(color: Color(0xFFE1E3E2), height: 1),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red[700],
-                    backgroundColor: Colors.red.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () {},
-                  icon: const Icon(Icons.delete_outline),
-                  label: Text("حذف جميع بياناتي المحلية",
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                ),
-              ),
+              _buildSilentModeToggle(),
             ],
           ),
         ),
-        const SizedBox(height: 24),
         _buildAboutSection(),
       ],
     );
@@ -295,6 +295,92 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> {
                   width: value == groupValue ? 6 : 2,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationTile() {
+    final c = AppColors.of(context);
+    return InkWell(
+      onTap: () async {
+        if (!_isNotificationGranted) {
+          final status = await Permission.notification.request();
+          if (status.isPermanentlyDenied || status.isDenied) {
+            openAppSettings();
+          } else {
+            _checkNotificationStatus();
+          }
+        } else {
+          openAppSettings(); // Open settings to disable if they want
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("إشعارات الأذان والتنبيهات",
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: c.textSecondary)),
+                  Text(
+                      _isNotificationGranted
+                          ? "الإشعارات مفعلة بنجاح"
+                          : "اضغط لمنح الصلاحية لتلقي الإشعارات",
+                      style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          color: _isNotificationGranted ? Colors.green[700] : Colors.red[700])),
+                ],
+              ),
+            ),
+            Icon(
+              _isNotificationGranted ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+              color: _isNotificationGranted ? Colors.green[700] : Colors.red[700],
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSilentModeToggle() {
+    final c = AppColors.of(context);
+    final settings = Provider.of<SettingsProvider>(context);
+
+    return InkWell(
+      onTap: () => settings.setRespectSilentMode(!settings.respectSilentMode),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("احترام الوضع الصامت",
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: c.textSecondary)),
+                  Text("تشغيل الأذان بصمت إذا كان الهاتف في وضع الاهتزاز أو الصامت",
+                      style: GoogleFonts.cairo(fontSize: 12, color: c.textSubtle)),
+                ],
+              ),
+            ),
+            Switch(
+              value: settings.respectSilentMode,
+              activeThumbColor: const Color(0xFFC9A96E),
+              onChanged: (val) => settings.setRespectSilentMode(val),
             ),
           ],
         ),

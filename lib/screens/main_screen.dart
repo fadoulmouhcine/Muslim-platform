@@ -39,7 +39,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
   StreamSubscription<String>? _adhanSubscription;
 
-  String _lastCalculationMethod = '';
+  // Composite fingerprint = "method|madhab" to detect actual prayer-parameter
+  // changes and ignore all other SettingsProvider notifications (theme, haptics, etc.)
+  String _lastCalcFingerprint = '';
+
+  // Tracks the calendar date for which prayer times were last computed.
+  // On app resume, we only recompute if the date has rolled to a new day —
+  // returning from Settings or granting a permission dialog should NOT trigger
+  // a redundant recalculation for the same date.
+  String _lastComputedDate = '';
+  
+  // Guard to prevent concurrent location refreshes
+  bool _isRefreshingLocation = false;
 
   // ✅ Task 4.6: Memory-leak fix — we must keep an explicit reference to
   // both the `SettingsProvider` instance we attached a listener to AND the
@@ -77,6 +88,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _initAdhanTriggerListener();
 
     _initLocationAndPrayers();
+
+    // ✅ Clear active notifications from system tray on cold start
+    NotificationService.clearActiveNotifications();
   }
 
   void _initAdhanTriggerListener() {
@@ -102,22 +116,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // no network round-trip, no cache invalidation, no "no internet" state.
   void _listenToSettingsChanges() {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    _lastCalculationMethod = settings.calculationMethod;
+    // Capture the fingerprint at setup time to avoid a false positive on the
+    // first notification that fires synchronously when a listener is added.
+    _lastCalcFingerprint = '${settings.calculationMethod}|${settings.madhab}';
 
-    // ✅ Task 4.6: Store both the target provider and the named listener
-    // callback so they can be detached in `dispose()`.
     _settingsListenerTarget = settings;
     _settingsListener = () {
       if (!mounted) return;
-      if (settings.calculationMethod != _lastCalculationMethod ||
-          settings.madhab !=
-              (_params?.madhab == Madhab.hanafi ? 'hanafi' : 'shafi')) {
-        _lastCalculationMethod = settings.calculationMethod;
+      final newFingerprint = '${settings.calculationMethod}|${settings.madhab}';
+      if (newFingerprint != _lastCalcFingerprint) {
+        _lastCalcFingerprint = newFingerprint;
         debugPrint(
             "⚡ Calculation settings changed -> Reactively recomputing offline prayer times...");
         final params = settings.getCalculationParameters();
-        // ✅ Task 4.2: Route through the shared PrayerTimesController
-        // instead of duplicating the default-coordinates fallback here.
         final times = PrayerTimesController.computeTodayTimes(
           coordinates: _myCoordinates,
           params: params,
@@ -183,26 +194,40 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // 🔥 4. هاد الدالة هي "العقل المدبر": كتعيق بيك فاش كترجع للتطبيق
+  // The lifecycle observer fires on every OS-level pause/resume (e.g., when a
+  // GPS permission dialog closes). We only want to recompute prayer times if
+  // the calendar date has rolled over since the last computation — NOT every
+  // time the user returns from Settings or any other in-app navigation.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("🔄 User returned -> Re-syncing notifications...");
+      debugPrint("🔄 App resumed.");
+
+      // ✅ Clear active notifications from system tray on resume
+      NotificationService.clearActiveNotifications();
 
       // ✅ Check for Payload (Background/Warm Start)
       _checkPayload();
 
-      // إلا كان عندنا الموقع والبارامترات، كنعاودو نحسبو الوقت دابا
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final coords = _myCoordinates;
       final params = _params;
-      if (coords != null && params != null && mounted) {
-        final times = PrayerTimesController.computeTimes(coords, params);
-        setState(() {
-          _prayerTimes = times;
-        });
 
-        NotificationService.schedulePrayerNotifications(times, context);
-        WidgetService.updateWidgetData(prayerTimes: times, city: _city);
+      if (coords != null && params != null && mounted) {
+        if (_lastComputedDate != today) {
+          // New day: recompute, reschedule notifications and update widget
+          debugPrint("⚡ New day detected on resume -> recomputing prayer times.");
+          final times = PrayerTimesController.computeTimes(coords, params);
+          setState(() {
+            _prayerTimes = times;
+            _lastComputedDate = today;
+          });
+          NotificationService.schedulePrayerNotifications(times, context);
+          WidgetService.updateWidgetData(prayerTimes: times, city: _city);
+        } else {
+          debugPrint("✅ Same day on resume — skipping redundant prayer-time recompute.");
+        }
       }
     }
   }
@@ -214,6 +239,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// block this flow is the *location* subsystem itself (GPS service off,
   /// or permission denied), never connectivity.
   Future<void> _initLocationAndPrayers({bool showLoader = true}) async {
+    if (_isRefreshingLocation) {
+      debugPrint("⏭️ Skipping location refresh — already in progress.");
+      return;
+    }
+
     if (showLoader) {
       setState(() {
         if (_prayerTimes == null) _isLoading = true;
@@ -248,6 +278,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           setState(() {
             _prayerTimes = times;
             _isLoading = false;
+            final d = DateTime.now();
+            _lastComputedDate = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
           });
           WidgetService.updateWidgetData(prayerTimes: times, city: _city);
         }
@@ -290,6 +322,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       // 3. Fetch a fresh GPS fix in the background (low accuracy for speed)
       // to refine location/city — prayer times are recomputed offline
       // the instant we have coordinates, regardless of network state.
+      
+      const kGpsRefreshCooldown = Duration(minutes: 5);
+      int? lastRefresh = prefs.getInt('last_gps_refresh_timestamp');
+      if (hasCache && lastRefresh != null) {
+        final lastRefreshTime = DateTime.fromMillisecondsSinceEpoch(lastRefresh);
+        if (DateTime.now().difference(lastRefreshTime) < kGpsRefreshCooldown) {
+          debugPrint("⏳ Skipping live GPS refresh (cooldown active).");
+          return;
+        }
+      }
+
+      _isRefreshingLocation = true;
       try {
         Position position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -308,6 +352,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             _isLoading = false;
           });
         }
+      } finally {
+        _isRefreshingLocation = false;
       }
     } catch (e) {
       debugPrint("Error: $e");
@@ -341,9 +387,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                             cachedCity != "جاري تحديد الموقع..." &&
                             cachedCity != "تعذر تحديد الموقع";
 
-        if (distanceInMeters < 5000 && hasValidCity) {
+        // Distance-based guard: only skip if user is within 5 km AND a valid
+        // city name is already cached. Travelling further than this threshold
+        // always triggers a full location + prayer-time refresh.
+        const double kMinSyncDistanceMeters = 5000;
+        if (distanceInMeters < kMinSyncDistanceMeters && hasValidCity) {
           debugPrint(
-              "✅ User is in same area (Diff: ${distanceInMeters.toInt()}m) with valid city ($cachedCity). Sync complete.");
+              "✅ User is in same area (Diff: ${distanceInMeters.toInt()}m < ${kMinSyncDistanceMeters.toInt()}m) with valid city ($cachedCity). Skipping GPS sync.");
           return; // Do nothing
         }
       }
@@ -423,6 +473,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     await prefs.setDouble('latitude', position.latitude);
     await prefs.setDouble('longitude', position.longitude);
     await prefs.setString('city', newCity);
+    await prefs.setInt('last_gps_refresh_timestamp', DateTime.now().millisecondsSinceEpoch);
+
 
     if (!mounted) return;
     final settings = Provider.of<SettingsProvider>(context, listen: false);
@@ -432,11 +484,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final PrayerTimes computedTimes =
         PrayerTimesController.computeTimes(_myCoordinates!, _params!);
 
-    if (mounted) {
+    if (mounted && _isRefreshingLocation) {
+      final dNow = DateTime.now();
       setState(() {
         _city = newCity;
         _prayerTimes = computedTimes;
         _isLoading = false;
+        _lastComputedDate = '${dNow.year}-${dNow.month.toString().padLeft(2, '0')}-${dNow.day.toString().padLeft(2, '0')}';
       });
 
       NotificationService.schedulePrayerNotifications(computedTimes, context);

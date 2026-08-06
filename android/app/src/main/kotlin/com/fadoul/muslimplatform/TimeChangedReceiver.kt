@@ -154,6 +154,10 @@ class TimeChangedReceiver : BroadcastReceiver() {
                      val alarmId = 100 + pIndex
                      val reminderId = 200 + pIndex
 
+                     val prefsFlutter = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                     val userNameRaw = prefsFlutter.getString("flutter.userName", "")
+                     val suffix = if (!userNameRaw.isNullOrBlank()) " يا $userNameRaw" else ""
+
                      AlarmScheduler.scheduleAlarm(
                          context,
                          alarmId,
@@ -161,7 +165,7 @@ class TimeChangedReceiver : BroadcastReceiver() {
                          prayerName,
                          safeSoundName,
                          false, 
-                         "حان الآن موعد أذان $prayerName",
+                         "حان الآن موعد أذان $prayerName$suffix",
                          "حي على الصلاة - حي على الفلاح",
                          null
                      )

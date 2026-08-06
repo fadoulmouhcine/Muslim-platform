@@ -37,10 +37,11 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = Provider.of<SettingsProvider>(context, listen: false);
       if (mounted) setState(() => _currentSound = settings.adhanSound);
-      if (settings.isAutoMethod) {
-        settings.setAutoMethodEnabled(true,
-            currentCountryCode: settings.lastCountryCode);
-      }
+      // Removed: re-triggering setAutoMethodEnabled() here caused a fresh GPS
+      // lookup and potential silent override of the calculation method/country on
+      // every visit to this tab, not just when the user toggled it. The toggle's
+      // onChanged handler below is the only place this should be called from
+      // user interaction.
     });
   }
 
@@ -235,6 +236,33 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
 
   Widget _buildAutoMethodToggle(
       SettingsProvider settings, Color primaryDarkGreen, Color cardWhite) {
+    
+    String getCountryName(String code) {
+      const map = {
+        'MA': 'المغرب', 'MAR': 'المغرب',
+        'SA': 'السعودية', 'EG': 'مصر',
+        'DZ': 'الجزائر', 'TN': 'تونس',
+        'KW': 'الكويت', 'TR': 'تركيا',
+        'PK': 'باكستان', 'US': 'الولايات المتحدة',
+        'CA': 'كندا', 'FR': 'فرنسا',
+        'AE': 'الإمارات', 'PS': 'فلسطين',
+        'BE': 'بلجيكا', 'DE': 'ألمانيا',
+      };
+      return map[code.toUpperCase()] ?? code;
+    }
+
+    String subtitleText = "يتم التحديد تلقائياً عند التواجد أو السفر لبلد آخر";
+    if (settings.isAutoMethod) {
+      if (settings.lastCountryCode != null && settings.lastCountryCode!.isNotEmpty) {
+        String countryName = getCountryName(settings.lastCountryCode!);
+        subtitleText = "مُفعل - تم التحديد تلقائياً بناءً على موقعك ($countryName)";
+      } else {
+        subtitleText = "مُفعل - يتم التحديث تلقائياً عند التواجد أو السفر لبلد آخر";
+      }
+    } else {
+      subtitleText = "معطل - تم تثبيت طريقة الحساب يدوياً";
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -259,9 +287,7 @@ class _AdhanSettingsTabState extends State<AdhanSettingsTab> {
           ),
         ),
         subtitle: Text(
-          settings.isAutoMethod
-              ? "مُفعل - يتم التحديث تلقائياً عند التواجد أو السفر لبلد آخر"
-              : "معطل - تم تثبيت طريقة الحساب يدوياً",
+          subtitleText,
           style: GoogleFonts.cairo(
             fontSize: 12,
             color: Colors.grey[600],

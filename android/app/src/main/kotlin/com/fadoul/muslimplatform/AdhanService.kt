@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 
 /**
@@ -42,19 +43,63 @@ class AdhanService : Service() {
         private var lastTriggerPrayer: String = ""
 
         // 🎯 دالة ساهلة باش نبداو Service من Dart
-        fun startAdhan(context: Context, prayerName: String, soundFileName: String, title: String? = null, body: String? = null) {
+        fun startAdhan(context: Context, prayerName: String, soundFileName: String, title: String? = null, body: String? = null, isMuted: Boolean = false) {
             val intent = Intent(context, AdhanService::class.java).apply {
                 putExtra("PRAYER_NAME", prayerName)
                 putExtra("SOUND_FILE", soundFileName)
+                putExtra("IS_MUTED", isMuted)
                 if (title != null) putExtra("TITLE", title)
                 if (body != null) putExtra("BODY", body)
             }
             
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                // ForegroundServiceStartNotAllowedException (API 31+) is an IllegalStateException.
+                android.util.Log.e("AdhanService", "⚠️ FGS start blocked (${e.javaClass.simpleName}): ${e.message}. Falling back.")
+                postFallbackAlarmNotification(context, prayerName, soundFileName, title, body, isMuted)
             }
+        }
+
+        private const val FALLBACK_CHANNEL_ID = "adhan_fallback_alarm_v1"
+
+        private fun postFallbackAlarmNotification(context: Context, prayerName: String, soundFileName: String, title: String?, body: String?, isMuted: Boolean) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val soundUri = if (isMuted) null else Uri.parse(
+                "android.resource://${context.packageName}/raw/$soundFileName"
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val existing = nm.getNotificationChannel(FALLBACK_CHANNEL_ID)
+                if (existing == null) {
+                    val channel = NotificationChannel(FALLBACK_CHANNEL_ID, "Adhan (Fallback)", NotificationManager.IMPORTANCE_HIGH).apply {
+                        setSound(
+                            soundUri ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM),
+                            AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build()
+                        )
+                        enableVibration(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    }
+                    nm.createNotificationChannel(channel)
+                }
+            }
+
+            val builder = NotificationCompat.Builder(context, FALLBACK_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle(title ?: "🕌 حان وقت الصلاة")
+                .setContentText(body ?: prayerName)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+
+            nm.notify(NOTIFICATION_ID, builder.build())
         }
 
         // 🛑 دالة لإيقاف الأذان
@@ -85,8 +130,27 @@ class AdhanService : Service() {
         }
 
         val prayerName = intent?.getStringExtra("PRAYER_NAME") ?: "الصلاة"
+        val soundFileName = intent?.getStringExtra("SOUND_FILE") ?: "adhan_hamza"
+        val isMuted = intent?.getBooleanExtra("IS_MUTED", false) ?: false
+
+        currentPrayerName = prayerName
         
-        // 🔒 PERSISTENT DISK DEDUPING & RE-ENTRANCY GUARD: Abort if played within 3 mins
+        val prefsFlutter = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val userNameRaw = prefsFlutter.getString("flutter.userName", "")?.trim()
+        
+        currentTitle = intent?.getStringExtra("TITLE") ?: getPrayerTitleFallback(prayerName, userNameRaw)
+        currentBody = intent?.getStringExtra("BODY") ?: getPrayerBodyFallback(prayerName, userNameRaw)
+
+        // 1️⃣ MUST start Foreground Service FIRST to prevent ForegroundServiceDidNotStartInTimeException on API 26+
+        createNotificationChannel()
+        val notification = createForegroundNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+
+        // 2️⃣ Check active playing state & persistent deduplication AFTER service is foregrounded
         val now = System.currentTimeMillis()
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val lastTimestamp = prefs.getLong("lastAdhanPlayedTimestamp", 0L)
@@ -98,8 +162,7 @@ class AdhanService : Service() {
         }
 
         if (prayerName == lastPrayer && (now - lastTimestamp) < 180000L) {
-            android.util.Log.w("AdhanService", "⚠️ Persistent Dedupe: Adhan for $prayerName was already triggered within 3 min (${now - lastTimestamp}ms). Aborting.")
-            stopSelf()
+            android.util.Log.w("AdhanService", "⚠️ Persistent Dedupe: Adhan for $prayerName was already triggered within 3 min (${now - lastTimestamp}ms). Keeping notification.")
             return START_NOT_STICKY
         }
 
@@ -110,35 +173,25 @@ class AdhanService : Service() {
 
         lastTriggerTime = now
         lastTriggerPrayer = prayerName
-
-        currentPrayerName = prayerName
         
-        val prefsFlutter = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val userNameRaw = prefsFlutter.getString("flutter.userName", "")?.trim()
-        
-        currentTitle = intent?.getStringExtra("TITLE") ?: getPrayerTitleFallback(prayerName, userNameRaw)
-        currentBody = intent?.getStringExtra("BODY") ?: getPrayerBodyFallback(prayerName, userNameRaw)
-
-        val soundFileName = intent?.getStringExtra("SOUND_FILE") ?: "adhan_hamza"
-        
-        // 1️⃣ نبداو Foreground Service بـ Notification
-        createNotificationChannel()
-        val notification = createForegroundNotification()
-        startForeground(NOTIFICATION_ID, notification)
-        
-        // 2️⃣ Acquire Wake Lock (باش يبقى الجهاز صاحي)
+        // 3️⃣ Acquire Wake Lock (keep CPU awake during playback)
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK, // No ACQUIRE_CAUSES_WAKEUP — keeps CPU alive without forcing screen on
+            PowerManager.PARTIAL_WAKE_LOCK,
             "MuslimApp::AdhanWakeLock"
         )
-        wakeLock?.acquire(5 * 60 * 1000L) // 5 دقائق max
+        wakeLock?.acquire(5 * 60 * 1000L) // 5 minutes max
         
-        // 3️⃣ Request Audio Focus (باش ما يتقطعش الأذان)
-        requestAudioFocus()
-        
-        // 4️⃣ نلعبو الأذان
-        playAdhan(soundFileName)
+        if (!isMuted) {
+            // 4️⃣ Request Audio Focus & Play Adhan Sound
+            requestAudioFocus()
+            playAdhan(soundFileName)
+        } else {
+            android.util.Log.d("AdhanService", "🔕 Adhan is MUTED for $prayerName. Showing notification only, no audio.")
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                cleanup()
+            }, 3 * 60 * 1000L)
+        }
         
         return START_NOT_STICKY // باش يرجع يبدا ila ت9فل Service
     }
@@ -265,43 +318,50 @@ class AdhanService : Service() {
         return builder.build()
     }
     
+    private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // 🛑 CRITICAL: Override default ducking! Don't let notifications lower Adhan volume.
+                mediaPlayer?.setVolume(1.0f, 1.0f)
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                // Phone call ringing - lower volume slightly so they can hear the ringtone
+                mediaPlayer?.setVolume(0.3f, 0.3f)
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                // Regained focus
+                mediaPlayer?.setVolume(1.0f, 1.0f)
+            }
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                // Lost focus completely (e.g. user answered call or played video)
+                cleanup()
+            }
+        }
+    }
+
     private fun requestAudioFocus() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM) // 🔥 المفتاح!
+                .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build()
             
-            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            // EXCLUSIVE — other apps are told not to duck at all, instead of us
+            // fighting the OS's default ducking behavior in the focus listener.
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
                 .setAudioAttributes(audioAttributes)
-                .setWillPauseWhenDucked(false) // ما ت-pause-يش
-                .setOnAudioFocusChangeListener { focusChange ->
-                    when (focusChange) {
-                        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                            // مكلمة phone - ن9صو الصوت
-                            mediaPlayer?.setVolume(0.3f, 0.3f)
-                        }
-                        AudioManager.AUDIOFOCUS_GAIN -> {
-                            // رجع Volume كامل
-                            mediaPlayer?.setVolume(1.0f, 1.0f)
-                        }
-                        AudioManager.AUDIOFOCUS_LOSS -> {
-                            // ضاع Focus - نوقفو
-                            cleanup()
-                        }
-                    }
-                }
+                .setOnAudioFocusChangeListener(focusChangeListener)
                 .build()
             
             audioManager.requestAudioFocus(audioFocusRequest!!)
         } else {
             @Suppress("DEPRECATION")
             audioManager.requestAudioFocus(
-                null,
+                focusChangeListener,
                 AudioManager.STREAM_ALARM,
-                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
             )
         }
     }
@@ -337,7 +397,7 @@ class AdhanService : Service() {
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM) // 🔥 المفتاح!
+                        .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
@@ -387,7 +447,7 @@ class AdhanService : Service() {
             }
         } else {
             @Suppress("DEPRECATION")
-            audioManager.abandonAudioFocus(null)
+            audioManager.abandonAudioFocus(focusChangeListener)
         }
         
         // 3. نحللو Wake Lock
@@ -397,13 +457,16 @@ class AdhanService : Service() {
             }
         }
         
-        // 4. Detach foreground service while keeping notification persistent in status bar
+        // 4. Detach foreground service and REMOVE the notification banner
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_DETACH)
+            stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
             @Suppress("DEPRECATION")
-            stopForeground(false)
+            stopForeground(true)
         }
+        
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
 
         stopSelf()
     }

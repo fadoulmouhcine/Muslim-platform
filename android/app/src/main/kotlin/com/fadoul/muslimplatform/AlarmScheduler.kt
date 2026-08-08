@@ -18,8 +18,9 @@ object AlarmScheduler {
         isReminder: Boolean,
         title: String,
         body: String,
-        payload: String?
-    ) {
+        payload: String?,
+        forceAlarmClock: Boolean = false
+    ): Boolean {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         
         // Intent for BroadcastReceiver
@@ -40,35 +41,75 @@ object AlarmScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         
-        // Android 12+ requires exact alarm permission check
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                Log.e("AlarmScheduler", "❌ Cannot schedule exact alarm: Permission denied")
-                return
-            }
+        if (forceAlarmClock) {
+            return scheduleViaAlarmClock(context, alarmManager, requestCode, timeInMillis, pendingIntent, prayerName, isReminder)
         }
         
-        try {
-            // setExactAndAllowWhileIdle fires reliably through Doze without a showIntent
-            // that could auto-launch the app on OEM ROMs (Samsung, Xiaomi, etc.)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        var scheduled = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
+            try {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     timeInMillis,
                     pendingIntent
                 )
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    timeInMillis,
-                    pendingIntent
-                )
+                scheduled = true
+            } catch (e: SecurityException) {
+                Log.w("AlarmScheduler", "⚠️ SecurityException on setExactAndAllowWhileIdle, falling back to setAlarmClock: ${e.message}")
             }
-            Log.d("AlarmScheduler", "✅ Alarm Scheduled: $prayerName (Reminder: $isReminder) at $timeInMillis")
-        } catch (e: SecurityException) {
-            Log.e("AlarmScheduler", "❌ SecurityException while scheduling alarm: ${e.message}")
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        timeInMillis,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        timeInMillis,
+                        pendingIntent
+                    )
+                }
+                scheduled = true
+            } catch (e: Exception) {
+                Log.w("AlarmScheduler", "⚠️ Exception on setExact, falling back to setAlarmClock: ${e.message}")
+            }
+        }
+
+        if (!scheduled) {
+            scheduled = scheduleViaAlarmClock(context, alarmManager, requestCode, timeInMillis, pendingIntent, prayerName, isReminder)
+        }
+
+        if (scheduled) {
+            Log.d("AlarmScheduler", "✅ Alarm Scheduled successfully: $prayerName (Reminder: $isReminder) at $timeInMillis")
+        }
+        return scheduled
+    }
+    
+    private fun scheduleViaAlarmClock(
+        context: Context, alarmManager: AlarmManager, requestCode: Int,
+        timeInMillis: Long, pendingIntent: PendingIntent, prayerName: String, isReminder: Boolean
+    ): Boolean {
+        return try {
+            val showIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val showPendingIntent = PendingIntent.getActivity(
+                context,
+                requestCode + 50000,
+                showIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(timeInMillis, showPendingIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+            Log.d("AlarmScheduler", "✅ Alarm Scheduled via setAlarmClock fallback: $prayerName (Reminder: $isReminder) at $timeInMillis")
+            true
         } catch (e: Exception) {
-            Log.e("AlarmScheduler", "❌ Error scheduling alarm: ${e.message}")
+            Log.e("AlarmScheduler", "❌ Error scheduling alarm via setAlarmClock fallback: ${e.message}")
+            false
         }
     }
     

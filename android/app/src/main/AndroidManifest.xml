@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="muslim"
@@ -77,7 +78,9 @@
             android:name=".AdhanService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback|specialUse" />
+            android:foregroundServiceType="mediaPlayback|specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Playing Adhan audio exactly on time for religious purposes" />
+        </service>
             
         <!-- 🔄 Boot Receiver: إعادة جدولة المنبهات والأذان عند تشغيل الهاتف -->
         <receiver android:name=".BootReceiver" android:exported="true">

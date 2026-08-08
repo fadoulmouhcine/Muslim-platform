@@ -75,11 +75,8 @@ class TimeChangedReceiver : BroadcastReceiver() {
         }
         
         // 🔒 Anti-Drift Guardrail: Enforce immutable cached coordinates, disabling dynamic GPS queries
-        val latStr = prefs.getString("flutter.native_latitude", "0.0")
-        val longStr = prefs.getString("flutter.native_longitude", "0.0")
-        
-        val lat = latStr?.toDoubleOrNull() ?: 0.0
-        val long = longStr?.toDoubleOrNull() ?: 0.0
+        val lat = getDoubleSafe(prefs, "flutter.native_latitude", "flutter.latitude")
+        val long = getDoubleSafe(prefs, "flutter.native_longitude", "flutter.longitude")
         
         val methodIndex = try {
             prefs.getLong("flutter.native_calculation_method_index", 3).toInt()
@@ -158,6 +155,16 @@ class TimeChangedReceiver : BroadcastReceiver() {
                      val userNameRaw = prefsFlutter.getString("flutter.userName", "")
                      val suffix = if (!userNameRaw.isNullOrBlank()) " يا $userNameRaw" else ""
 
+                     val arabicName = when (prayerName.lowercase()) {
+                         "fajr" -> "الفجر"
+                         "sunrise" -> "الشروق"
+                         "dhuhr" -> "الظهر"
+                         "asr" -> "العصر"
+                         "maghrib" -> "المغرب"
+                         "isha" -> "العشاء"
+                         else -> prayerName
+                     }
+
                      AlarmScheduler.scheduleAlarm(
                          context,
                          alarmId,
@@ -165,9 +172,10 @@ class TimeChangedReceiver : BroadcastReceiver() {
                          prayerName,
                          safeSoundName,
                          false, 
-                         "حان الآن موعد أذان $prayerName$suffix",
+                         "حان الآن موعد أذان $arabicName$suffix",
                          "حي على الصلاة - حي على الفلاح",
-                         null
+                         null,
+                         forceAlarmClock = true
                      )
                      
                      // 2. Schedule Reminder (if offset > 0)
@@ -188,7 +196,7 @@ class TimeChangedReceiver : BroadcastReceiver() {
                                  prayerName,
                                  "takbeer",
                                  true,
-                                 "اقتربت صلاة $prayerName",
+                                 "اقتربت صلاة $arabicName",
                                  reminderBodyText,
                                  null
                              )
@@ -236,5 +244,44 @@ class TimeChangedReceiver : BroadcastReceiver() {
                  Log.e("TimeChangedReceiver", "❌ Failed to schedule work: ${e.message}")
                  e.printStackTrace()
              }
+    }
+
+    private fun getDoubleSafe(prefs: SharedPreferences, primaryKey: String, fallbackKey: String): Double {
+        val keysToTry = listOfNotNull(
+            primaryKey,
+            if (primaryKey.startsWith("flutter.")) primaryKey.removePrefix("flutter.") else "flutter.$primaryKey",
+            if (fallbackKey.isNotEmpty()) fallbackKey else null,
+            if (fallbackKey.isNotEmpty() && fallbackKey.startsWith("flutter.")) fallbackKey.removePrefix("flutter.") else if (fallbackKey.isNotEmpty()) "flutter.$fallbackKey" else null,
+            "${primaryKey}_str",
+            "flutter.${primaryKey}_str"
+        ).distinct()
+
+        for (key in keysToTry) {
+            try {
+                val strVal = prefs.getString(key, null)
+                if (strVal != null) {
+                    val cleanStr = if (strVal.startsWith("VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu")) {
+                        strVal.removePrefix("VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu")
+                    } else {
+                        strVal
+                    }
+                    cleanStr.toDoubleOrNull()?.let { return it }
+                }
+            } catch (_: Exception) {}
+
+            try {
+                val floatVal = prefs.getFloat(key, 0.0f)
+                if (floatVal != 0.0f) return floatVal.toDouble()
+            } catch (_: Exception) {}
+
+            try {
+                val longVal = prefs.getLong(key, 0L)
+                if (longVal != 0L) {
+                    val doubleFromBits = java.lang.Double.longBitsToDouble(longVal)
+                    if (!doubleFromBits.isNaN() && doubleFromBits != 0.0) return doubleFromBits
+                }
+            } catch (_: Exception) {}
+        }
+        return 0.0
     }
 }

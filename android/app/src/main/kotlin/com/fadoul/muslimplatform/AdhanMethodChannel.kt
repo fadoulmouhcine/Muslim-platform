@@ -133,9 +133,9 @@ class AdhanMethodChannel(private val context: Context) : MethodChannel.MethodCal
                 val body = call.argument<String>("body") ?: "اقتربت الصلاة"
                 val payload = call.argument<String>("payload")
                 
-                AlarmScheduler.scheduleAlarm(context, requestCode, timeInMillis, prayerName, soundFile, isReminder, title, body, payload)
+                val success = AlarmScheduler.scheduleAlarm(context, requestCode, timeInMillis, prayerName, soundFile, isReminder, title, body, payload, !isReminder)
                 
-                result.success("Alarm scheduled")
+                result.success(success)
             }
 
             "stopAdhan" -> {

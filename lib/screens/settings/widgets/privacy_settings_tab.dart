@@ -16,6 +16,8 @@ class PrivacySettingsTab extends StatefulWidget {
 class _PrivacySettingsTabState extends State<PrivacySettingsTab> with WidgetsBindingObserver {
   int _locationMode = 0; // 0: Precise, 1: Approximate
   bool _isNotificationGranted = false;
+  bool _isExactAlarmGranted = false;
+  bool _isBatteryOptIgnored = false;
 
   @override
   void initState() {
@@ -39,9 +41,18 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> with WidgetsBin
 
   Future<void> _checkNotificationStatus() async {
     final status = await Permission.notification.status;
+    bool exactStatus = false;
+    bool batteryStatus = false;
+    try {
+      exactStatus = await Permission.scheduleExactAlarm.isGranted;
+      batteryStatus = await Permission.ignoreBatteryOptimizations.isGranted;
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _isNotificationGranted = status.isGranted;
+        _isExactAlarmGranted = exactStatus;
+        _isBatteryOptIgnored = batteryStatus;
       });
     }
   }
@@ -77,11 +88,21 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> with WidgetsBin
           ),
         ),
         _buildSettingsCard(
-          title: "صلاحيات الإشعارات",
+          title: "صلاحيات الإشعارات والأذان",
           icon: Icons.notifications_active_outlined,
           child: Column(
             children: [
               _buildNotificationTile(),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(color: Color(0xFFE1E3E2), height: 1),
+              ),
+              _buildExactAlarmTile(),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(color: Color(0xFFE1E3E2), height: 1),
+              ),
+              _buildBatteryOptimizationTile(),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(color: Color(0xFFE1E3E2), height: 1),
@@ -381,6 +402,105 @@ class _PrivacySettingsTabState extends State<PrivacySettingsTab> with WidgetsBin
               value: settings.respectSilentMode,
               activeThumbColor: const Color(0xFFC9A96E),
               onChanged: (val) => settings.setRespectSilentMode(val),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExactAlarmTile() {
+    final c = AppColors.of(context);
+    return InkWell(
+      onTap: () async {
+        if (!_isExactAlarmGranted) {
+          final status = await Permission.scheduleExactAlarm.request();
+          if (status.isPermanentlyDenied || status.isDenied) {
+            openAppSettings();
+          } else {
+            _checkNotificationStatus();
+          }
+        } else {
+          openAppSettings();
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("إذن المنبهات والأذان الدقيق",
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: c.textSecondary)),
+                  Text(
+                      _isExactAlarmGranted
+                          ? "مفعّل (تشغيل الأذان في الوقت المحدد بالضبط)"
+                          : "اضغط لمنح إذن تشغيل الأذان بدقة في الخلفية",
+                      style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          color: _isExactAlarmGranted ? Colors.green[700] : Colors.amber[800])),
+                ],
+              ),
+            ),
+            Icon(
+              _isExactAlarmGranted ? Icons.alarm_on_rounded : Icons.alarm_add_rounded,
+              color: _isExactAlarmGranted ? Colors.green[700] : Colors.amber[800],
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatteryOptimizationTile() {
+    final c = AppColors.of(context);
+    return InkWell(
+      onTap: () async {
+        if (!_isBatteryOptIgnored) {
+          final status = await Permission.ignoreBatteryOptimizations.request();
+          if (!status.isGranted) {
+            openAppSettings();
+          }
+          _checkNotificationStatus();
+        } else {
+          openAppSettings();
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("استثناء تحسين البطارية (أداء مستقر)",
+                      style: GoogleFonts.cairo(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: c.textSecondary)),
+                  Text(
+                      _isBatteryOptIgnored
+                          ? "مستثنى (يمنع النظام من تأخير الأذان أثناء النوم)"
+                          : "اضغط لإلغاء قيود البطارية وضمان انطلاق الأذان فوراً",
+                      style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          color: _isBatteryOptIgnored ? Colors.green[700] : Colors.amber[800])),
+                ],
+              ),
+            ),
+            Icon(
+              _isBatteryOptIgnored ? Icons.battery_charging_full_rounded : Icons.battery_alert_rounded,
+              color: _isBatteryOptIgnored ? Colors.green[700] : Colors.amber[800],
+              size: 24,
             ),
           ],
         ),

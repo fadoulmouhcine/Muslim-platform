@@ -80,6 +80,10 @@ class SettingsProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('latitude', lat);
     await prefs.setDouble('longitude', lng);
+    await prefs.setDouble('native_latitude', lat);
+    await prefs.setDouble('native_longitude', lng);
+    await prefs.setString('native_latitude_str', lat.toString());
+    await prefs.setString('native_longitude_str', lng.toString());
     if (_city != null) {
       await prefs.setString('city', _city!);
     }

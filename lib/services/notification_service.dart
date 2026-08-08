@@ -12,12 +12,58 @@ import 'package:adhan/adhan.dart';
 import '../main.dart'; // ✅ Import for navigatorKey
 import '../screens/daily_harvest_screen.dart'; // ✅ Import DailyHarvestScreen
 import '../screens/quran_reading_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'arabic_plural_helper.dart';
 import 'method_channel_constants.dart'; // ✅ Task 3.5: Centralized channel names
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
+
+  static double _readDoubleSafely(SharedPreferences prefs, String key, {double fallback = 0}) {
+    final dynamic raw = prefs.get(key);
+    if (raw == null) {
+      return fallback;
+    }
+    if (raw is double) {
+      return raw;
+    }
+    if (raw is int) {
+      return raw.toDouble();
+    }
+    if (raw is String) {
+      return double.tryParse(raw) ?? fallback;
+    }
+    return fallback;
+  }
+
+  static int _readIntSafely(SharedPreferences prefs, String key, {int fallback = 0}) {
+    final dynamic raw = prefs.get(key);
+    if (raw == null) {
+      return fallback;
+    }
+    if (raw is int) {
+      return raw;
+    }
+    if (raw is double) {
+      return raw.toInt();
+    }
+    if (raw is String) {
+      return int.tryParse(raw) ?? fallback;
+    }
+    return fallback;
+  }
+  
+  static String? _readStringSafely(SharedPreferences prefs, String key) {
+    final dynamic raw = prefs.get(key);
+    if (raw == null) {
+      return null;
+    }
+    if (raw is String) {
+      return raw;
+    }
+    return raw.toString();
+  }
 
   // 🔗 MethodChannel للتواصل مع Native Android (Foreground Service)
   static const MethodChannel _adhanChannel =
@@ -87,6 +133,15 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>();
 
       await androidImplementation?.requestExactAlarmsPermission();
+      await androidImplementation?.requestNotificationsPermission();
+
+      try {
+        if (await Permission.scheduleExactAlarm.isDenied) {
+          await Permission.scheduleExactAlarm.request();
+        }
+      } catch (e) {
+        debugPrint("⚠️ ScheduleExactAlarm request warning: $e");
+      }
     }
 
     // ✅ Listen to Native Method Channel (For Notification Taps)
@@ -294,19 +349,27 @@ class NotificationService {
       }
     }
     try {
-      await _notificationsPlugin.cancelAll();
+      // 🛑 Fix: Don't call cancelAll() on Android, as it wipes out active notifications in the status bar!
+      // Native Android alarms are explicitly cancelled by ID above.
+      if (Platform.isIOS) {
+        await _notificationsPlugin.cancelAll();
+      }
     } catch (e) {
       debugPrint("⚠️ Warning cancelling local notifications: $e");
     }
 
     final prefs = await SharedPreferences.getInstance();
 
-    // ✅ Save Params for Native TimeChangedReceiver
-    await prefs.setString('native_latitude', coords.latitude.toString());
-    await prefs.setString('native_longitude', coords.longitude.toString());
+    // ✅ Save Params for Native TimeChangedReceiver & BootReceiver (Both Double and String formats)
+    await prefs.setDouble('latitude', coords.latitude);
+    await prefs.setDouble('longitude', coords.longitude);
+    await prefs.setDouble('native_latitude', coords.latitude);
+    await prefs.setDouble('native_longitude', coords.longitude);
+    await prefs.setString('native_latitude_str', coords.latitude.toString());
+    await prefs.setString('native_longitude_str', coords.longitude.toString());
 
     int nativeMethodIndex = 0; // Default to MWL
-    switch (prefs.getString('calculationMethod') ?? 'mwl') {
+    switch (_readStringSafely(prefs, 'calculationMethod') ?? 'mwl') {
       case 'mwl':
         nativeMethodIndex = 0;
         break;
@@ -333,35 +396,52 @@ class NotificationService {
         break;
     }
     await prefs.setInt('native_calculation_method_index', nativeMethodIndex);
-    // ✅ Read the user's actual Madhab preference (Shafi'i=1 / Hanafi=2)
-    // instead of a hardcoded value, so the native alarm scheduler (used for
-    // background rescheduling) stays in sync with the in-app setting.
-    final String madhabPref = prefs.getString('prayerMadhab') ?? 'shafi';
-    await prefs.setInt(
-        'native_madhab_index', madhabPref == 'hanafi' ? 2 : 1);
-    await prefs.setInt(
-        'native_notification_offset', prefs.getInt('notificationOffset') ?? 0);
+    
+    // ✅ Read the user's actual Madhab preference safely
+    final String madhabPref = _readStringSafely(prefs, 'prayerMadhab') ?? 'shafi';
+    await prefs.setInt('native_madhab_index', madhabPref == 'hanafi' ? 2 : 1);
+    
+    // ✅ Read notificationOffset safely
+    await prefs.setInt('native_notification_offset', _readIntSafely(prefs, 'notificationOffset'));
 
-    String userName = prefs.getString('userName') ?? "مسلم";
+    String userName = _readStringSafely(prefs, 'userName') ?? "مسلم";
 
-    String rawSound = prefs.getString('adhanSound') ?? 'adhan_hamza';
+    String rawSound = _readStringSafely(prefs, 'adhanSound') ?? 'adhan_hamza';
     String adhanSound = rawSound.split('.').first;
 
-    int? preFajrMinutes = prefs.getInt('preFajrAlarmMinutes');
+    int? preFajrMinutes = _readIntSafely(prefs, 'preFajrAlarmMinutes', fallback: 0);
+    if (preFajrMinutes == 0) preFajrMinutes = null;
 
     Map<String, int> prayerOffsets = {};
-    String? offsetsJson = prefs.getString('prayerOffsets');
-    if (offsetsJson != null) {
-      Map<String, dynamic> decoded = json.decode(offsetsJson);
-      prayerOffsets = decoded.map((key, value) => MapEntry(key, value as int));
+    try {
+      String? offsetsJson = _readStringSafely(prefs, 'prayerOffsets');
+      if (offsetsJson != null) {
+        Map<String, dynamic> decoded = json.decode(offsetsJson);
+        prayerOffsets = decoded.map((key, value) {
+          int offsetVal = 0;
+          if (value is int) {
+            offsetVal = value;
+          } else if (value is double) {
+            offsetVal = value.toInt();
+          } else if (value is String) {
+            offsetVal = int.tryParse(value) ?? 0;
+          }
+          return MapEntry(key, offsetVal);
+        });
+      }
+    } catch (e) {
+      debugPrint("⚠️ Safe read failed for prayerOffsets: $e");
     }
 
     Map<String, bool> prayerMuteStatus = {};
-    String? muteJson = prefs.getString('prayerMuteStatus');
-    if (muteJson != null) {
-      Map<String, dynamic> decoded = json.decode(muteJson);
-      prayerMuteStatus =
-          decoded.map((key, value) => MapEntry(key, value as bool));
+    try {
+      String? muteJson = _readStringSafely(prefs, 'prayerMuteStatus');
+      if (muteJson != null) {
+        Map<String, dynamic> decoded = json.decode(muteJson);
+        prayerMuteStatus = decoded.map((key, value) => MapEntry(key, value == true || value == 'true'));
+      }
+    } catch (e) {
+      debugPrint("⚠️ Safe read failed for prayerMuteStatus: $e");
     }
 
     // 3. Schedule 3 days with strict deterministic IDs
@@ -518,6 +598,7 @@ class NotificationService {
         (isReminder ? titleOrPrayer : PrayerMessaging.getTitle(titleOrPrayer));
 
     if (Platform.isAndroid) {
+      bool nativeSuccess = false;
       try {
         final timeInMillis = scheduledTime.millisecondsSinceEpoch;
 
@@ -532,22 +613,28 @@ class NotificationService {
           'payload': customPayload,
         };
 
-        await _adhanChannel.invokeMethod('scheduleAdhanAlarm', args);
+        final result = await _adhanChannel.invokeMethod<bool>('scheduleAdhanAlarm', args);
+        nativeSuccess = result ?? false;
 
-        debugPrint(
-            "⏰ Native Alarm (${isReminder ? 'Reminder' : 'Adhan'}) Scheduled: $finalTitle at $scheduledTime");
+        if (nativeSuccess) {
+          debugPrint(
+              "⏰ Native Alarm (${isReminder ? 'Reminder' : 'Adhan'}) Scheduled: $finalTitle at $scheduledTime");
+          return;
+        } else {
+          debugPrint("⚠️ Native Alarm returned false for $finalTitle, falling back to Flutter zonedSchedule");
+        }
       } catch (e) {
         debugPrint("❌ Failed to schedule native alarm ($finalTitle): $e");
       }
-      return;
+      // If native scheduling returned false or failed, proceed to Flutter zonedSchedule fallback below
     }
 
     String channelId = isReminder
-        ? 'reminder_channel_v11_$safeSoundName'
+        ? 'reminder_channel_v12_default'
         : 'adhan_channel_v11_$safeSoundName';
 
     String channelName =
-        isReminder ? 'Reminders V11' : 'Adhan V11 ($safeSoundName)';
+        isReminder ? 'Reminders V12' : 'Adhan V11 ($safeSoundName)';
     String channelDesc = isReminder
         ? 'Notifications for prayer reminders'
         : 'High priority Adhan notifications';
@@ -559,7 +646,7 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.max,
       icon: 'ic_stat_adhan',
-      sound: RawResourceAndroidNotificationSound(safeSoundName),
+      sound: isReminder ? null : RawResourceAndroidNotificationSound(safeSoundName),
       playSound: true,
       enableVibration: true,
       ongoing: false, // User can manually swipe it away
@@ -704,26 +791,30 @@ class NotificationService {
 
     final prefs = await SharedPreferences.getInstance();
 
-    String? latStr = prefs.getString('native_latitude');
-    String? longStr = prefs.getString('native_longitude');
-
-    if (latStr == null || longStr == null) {
-      debugPrint("Background: No coordinates saved. Aborting.");
-      return;
-    }
-
-    double? lat = double.tryParse(latStr);
-    double? long = double.tryParse(longStr);
+    double? lat = _readDoubleSafely(prefs, 'native_latitude', fallback: _readDoubleSafely(prefs, 'latitude', fallback: -999.0));
+    double? long = _readDoubleSafely(prefs, 'native_longitude', fallback: _readDoubleSafely(prefs, 'longitude', fallback: -999.0));
+    
+    if (lat == -999.0) lat = null;
+    if (long == -999.0) long = null;
 
     if (lat == null || long == null) {
-      debugPrint("Background: Invalid coordinates. Aborting.");
+      String? latStr = _readStringSafely(prefs, 'native_latitude_str');
+      String? longStr = _readStringSafely(prefs, 'native_longitude_str');
+      if (latStr != null && longStr != null) {
+        lat = double.tryParse(latStr);
+        long = double.tryParse(longStr);
+      }
+    }
+
+    if (lat == null || long == null) {
+      debugPrint("Background: No valid coordinates saved. Aborting.");
       return;
     }
 
     Coordinates coordinates = Coordinates(lat, long);
 
     // 3. إعدادات الحساب
-    String method = prefs.getString('calculationMethod') ?? 'mwl';
+    String method = _readStringSafely(prefs, 'calculationMethod') ?? 'mwl';
     CalculationParameters params;
     switch (method) {
       case 'egypt':

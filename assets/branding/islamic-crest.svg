@@ -1,0 +1,38 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40" viewBox="0 0 400 40">
+  <defs>
+    <linearGradient id="crestGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C5A059" stop-opacity="0" />
+      <stop offset="25%" stop-color="#C5A059" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#F3E5AB" stop-opacity="1" />
+      <stop offset="75%" stop-color="#C5A059" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#C5A059" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="crestEmerald" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0" />
+      <stop offset="50%" stop-color="#10B981" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Horizontal Fine Flourish Lines -->
+  <line x1="20" y1="20" x2="160" y2="20" stroke="url(#crestGold)" stroke-width="1" />
+  <line x1="240" y1="20" x2="380" y2="20" stroke="url(#crestGold)" stroke-width="1" />
+  <line x1="60" y1="23" x2="150" y2="23" stroke="url(#crestEmerald)" stroke-width="0.75" />
+  <line x1="250" y1="23" x2="340" y2="23" stroke="url(#crestEmerald)" stroke-width="0.75" />
+
+  <!-- Side Accent Diamonds -->
+  <polygon points="170,20 174,16 178,20 174,24" fill="#C5A059" opacity="0.7" />
+  <polygon points="230,20 226,16 222,20 226,24" fill="#C5A059" opacity="0.7" />
+
+  <circle cx="155" cy="20" r="1.5" fill="#10B981" />
+  <circle cx="245" cy="20" r="1.5" fill="#10B981" />
+
+  <!-- Central Star & Crescent Islamic Motif -->
+  <g transform="translate(200, 20)">
+    <!-- Rub el Hizb Center Star -->
+    <rect x="-9" y="-9" width="18" height="18" fill="none" stroke="#C5A059" stroke-width="1.2" />
+    <rect x="-9" y="-9" width="18" height="18" fill="none" stroke="#C5A059" stroke-width="1.2" transform="rotate(45)" />
+    <circle r="4.5" fill="#10B981" opacity="0.8" />
+    <circle r="2" fill="#F3E5AB" />
+  </g>
+</svg>
